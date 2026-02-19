@@ -10,14 +10,15 @@ const CURL_EXAMPLE = `curl -H "X-API-Key: YOUR_KEY" \\
   https://api.apiaberta.pt/v1/fuel/prices`
 
 export default function Dashboard() {
-  const { apiKey, name } = useAuth()
+  const { token, name } = useAuth()
   const navigate = useNavigate()
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!apiKey) navigate('/', { replace: true })
-  }, [apiKey, navigate])
+    if (!token) navigate('/', { replace: true })
+  }, [token, navigate])
 
-  if (!apiKey) return null
+  if (!token) return null
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>

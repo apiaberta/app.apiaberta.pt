@@ -1,9 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, BookOpen, LayoutDashboard, Zap } from 'lucide-react'
+import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus } from 'lucide-react'
 
 export default function Navbar() {
-  const { apiKey, logout } = useAuth()
+  const { token, logout } = useAuth()
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -16,7 +16,7 @@ export default function Navbar() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to={apiKey ? '/dashboard' : '/'} className="flex items-center gap-2 no-underline">
+          <Link to={token ? '/dashboard' : '/'} className="flex items-center gap-2 no-underline">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ backgroundColor: '#16A34A' }}
@@ -36,7 +36,7 @@ export default function Navbar() {
 
           {/* Nav links */}
           <div className="flex items-center gap-1">
-            {apiKey && (
+            {token && (
               <Link
                 to="/dashboard"
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors no-underline"
@@ -52,7 +52,16 @@ export default function Navbar() {
               <BookOpen size={15} />
               Docs
             </Link>
-            {apiKey && (
+            {!token && (
+              <Link
+                to="/register"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors no-underline"
+              >
+                <UserPlus size={15} />
+                Register
+              </Link>
+            )}
+            {token && (
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors cursor-pointer border-0 bg-transparent ml-2"
