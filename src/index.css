@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-primary: #16A34A;
+  --color-navy: #0F172A;
+  --color-amber: #F59E0B;
+  --color-bg: #FAFAFA;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #FAFAFA;
+  color: #0F172A;
+  margin: 0;
+  padding: 0;
+}
+
+pre, code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+}
