@@ -25,7 +25,7 @@ export default function Login() {
     setError(null)
 
     try {
-      const res = await api.post('/auth/login', { email, password })
+      const res = await api.post('/v1/auth/login', { email, password })
       const data = res.data
       login({
         token: data.token,

@@ -55,7 +55,7 @@ export default function Register() {
     setError(null)
 
     try {
-      const res = await api.post('/auth/register', { name, email, password })
+      const res = await api.post('/v1/auth/register', { name, email, password })
       const data = res.data
 
       login({
