@@ -51,7 +51,7 @@ function DevelopersTab({ token }) {
   const fetchDevs = useCallback(() => {
     setLoading(true)
     api.get('/v1/admin/users', { headers })
-      .then(r => setDevs(r.data?.users ?? r.data ?? []))
+      .then(r => setDevs(r.data?.developers ?? r.data?.users ?? []))
       .catch(() => setError('Erro a carregar developers. Verifica se o endpoint existe.'))
       .finally(() => setLoading(false))
   }, [token])
