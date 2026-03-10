@@ -62,7 +62,7 @@ function DevelopersTab({ token }) {
     setActionLoading(p => ({ ...p, [userId + '_tier']: true }))
     try {
       await api.patch(`/v1/admin/users/${userId}`, { tier: newTier }, { headers })
-      setDevs(prev => prev.map(d => d.id === userId ? { ...d, tier: newTier } : d))
+      setDevs(prev => prev.map(d => d._id === userId ? { ...d, tier: newTier } : d))
     } catch {
       alert('Erro ao alterar tier.')
     } finally {
@@ -74,7 +74,7 @@ function DevelopersTab({ token }) {
     setActionLoading(p => ({ ...p, [userId + '_active']: true }))
     try {
       await api.patch(`/v1/admin/users/${userId}`, { active: !currentActive }, { headers })
-      setDevs(prev => prev.map(d => d.id === userId ? { ...d, active: !currentActive } : d))
+      setDevs(prev => prev.map(d => d._id === userId ? { ...d, active: !currentActive } : d))
     } catch {
       alert('Erro ao alterar estado.')
     } finally {
@@ -111,12 +111,12 @@ function DevelopersTab({ token }) {
         </thead>
         <tbody className="divide-y divide-slate-100">
           {devs.map(dev => (
-            <tr key={dev.id} className="hover:bg-slate-50 transition-colors">
+            <tr key={dev._id} className="hover:bg-slate-50 transition-colors">
               <td className="px-4 py-3 font-medium text-slate-800">{dev.name || '—'}</td>
               <td className="px-4 py-3 text-slate-600">{dev.email}</td>
               <td className="px-4 py-3"><TierBadge tier={dev.tier} /></td>
               <td className="px-4 py-3 text-slate-500 text-xs">
-                {dev.created_at ? new Date(dev.created_at).toLocaleDateString('pt-PT') : '—'}
+                {(dev.createdAt || dev.created_at) ? new Date(dev.createdAt || dev.created_at).toLocaleDateString('pt-PT') : '—'}
               </td>
               <td className="px-4 py-3"><StatusBadge active={dev.active !== false} /></td>
               <td className="px-4 py-3">
@@ -125,8 +125,8 @@ function DevelopersTab({ token }) {
                   <div className="relative">
                     <select
                       value={dev.tier || 'free'}
-                      onChange={e => changeTier(dev.id, e.target.value)}
-                      disabled={actionLoading[dev.id + '_tier']}
+                      onChange={e => changeTier(dev._id, e.target.value)}
+                      disabled={actionLoading[dev._id + '_tier']}
                       className="appearance-none text-xs border border-slate-200 rounded-lg px-2 py-1 pr-6 bg-white text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
                     >
                       <option value="free">free</option>
@@ -137,15 +137,15 @@ function DevelopersTab({ token }) {
                   </div>
                   {/* Toggle active */}
                   <button
-                    onClick={() => toggleActive(dev.id, dev.active !== false)}
-                    disabled={actionLoading[dev.id + '_active']}
+                    onClick={() => toggleActive(dev._id, dev.active !== false)}
+                    disabled={actionLoading[dev._id + '_active']}
                     className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors border-0 cursor-pointer disabled:opacity-50 ${
                       dev.active !== false
                         ? 'bg-red-50 text-red-600 hover:bg-red-100'
                         : 'bg-green-50 text-green-700 hover:bg-green-100'
                     }`}
                   >
-                    {actionLoading[dev.id + '_active'] ? '...' : dev.active !== false ? 'Desactivar' : 'Activar'}
+                    {actionLoading[dev._id + '_active'] ? '...' : dev.active !== false ? 'Desactivar' : 'Activar'}
                   </button>
                 </div>
               </td>
@@ -180,9 +180,9 @@ function UsageTab({ token }) {
     <div className="rounded-xl bg-red-50 border border-red-200 p-6 text-red-600 text-sm">{error}</div>
   )
 
-  const byDay = data?.by_day ?? []
-  const byEndpoint = data?.by_endpoint ?? []
-  const total = data?.total_30d ?? byDay.reduce((s, d) => s + d.count, 0)
+  const byDay = []
+  const byEndpoint = (data?.byEndpoint ?? []).map(e => ({ endpoint: e._id, count: e.count }))
+  const total = data?.total ?? 0
 
   return (
     <div className="flex flex-col gap-6">
@@ -266,10 +266,10 @@ function StatsTab() {
   )
 
   const cards = [
-    { label: 'Total de chamadas', value: stats?.total_requests ?? stats?.total_calls, color: '#16A34A' },
-    { label: 'Developers registados', value: stats?.total_users ?? stats?.developers, color: '#2563EB' },
-    { label: 'Conectores activos', value: stats?.total_connectors ?? stats?.connectors, color: '#7C3AED' },
-    { label: 'Chamadas hoje', value: stats?.requests_today ?? stats?.calls_today, color: '#D97706' },
+    { label: 'Total de chamadas', value: stats?.api_calls_total, color: '#16A34A' },
+    { label: 'Developers registados', value: stats?.developers_registered, color: '#2563EB' },
+    { label: 'Conectores activos', value: stats?.connectors_active, color: '#7C3AED' },
+    { label: 'Chamadas hoje', value: stats?.api_calls_today, color: '#D97706' },
   ].filter(c => c.value !== undefined && c.value !== null)
 
   return (
