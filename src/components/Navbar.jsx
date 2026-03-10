@@ -1,9 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus } from 'lucide-react'
+import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus, Shield } from 'lucide-react'
 
 export default function Navbar() {
-  const { token, logout } = useAuth()
+  const { token, tier, logout } = useAuth()
   const navigate = useNavigate()
 
   function handleLogout() {
@@ -43,6 +43,15 @@ export default function Navbar() {
               >
                 <LayoutDashboard size={15} />
                 Dashboard
+              </Link>
+            )}
+            {token && tier === 'admin' && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-violet-300 hover:text-white hover:bg-violet-800/40 transition-colors no-underline"
+              >
+                <Shield size={15} />
+                Admin
               </Link>
             )}
             <Link
