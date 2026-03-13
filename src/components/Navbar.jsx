@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus, Shield } from 'lucide-react'
+import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus, Shield, Webhook } from 'lucide-react'
 
 export default function Navbar() {
   const { token, tier, logout } = useAuth()
@@ -43,6 +43,15 @@ export default function Navbar() {
               >
                 <LayoutDashboard size={15} />
                 Dashboard
+              </Link>
+            )}
+            {token && (
+              <Link
+                to="/webhooks"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-700 transition-colors no-underline"
+              >
+                <Webhook size={15} />
+                Webhooks
               </Link>
             )}
             {token && tier === 'admin' && (
