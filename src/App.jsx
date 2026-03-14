@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Docs from './pages/Docs'
 import Admin from './pages/Admin'
 import Webhooks from './pages/Webhooks'
+import Playground from './pages/Playground'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/docs" element={<Docs />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/webhooks" element={<Webhooks />} />
+          <Route path="/playground" element={<Playground />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
