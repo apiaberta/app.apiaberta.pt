@@ -31,6 +31,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem(STORAGE_KEYS.tier, tier_)
   }
 
+  function updateApiKey(newKey) {
+    setApiKey(newKey)
+    localStorage.setItem(STORAGE_KEYS.apiKey, newKey)
+  }
+
   function logout() {
     setToken(null)
     setApiKey(null)
@@ -41,7 +46,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, apiKey, email, name, tier, login, logout }}>
+    <AuthContext.Provider value={{ token, apiKey, email, name, tier, login, logout, updateApiKey }}>
       {children}
     </AuthContext.Provider>
   )
