@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Webhook, Plus, Trash2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react'
+import { Webhook, Plus, Trash2, CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../api/client'
 
@@ -35,6 +35,8 @@ function WebhookCard({ wh, onDelete }) {
   const [deliveries, setDeliveries] = useState(null)
   const [expanded, setExpanded]     = useState(false)
   const [deleting, setDeleting]     = useState(false)
+  const [testing, setTesting]       = useState(false)
+  const [testResult, setTestResult] = useState(null) // { status, responseCode, error }
   const { token } = useAuth()
 
   function toggleDeliveries() {
@@ -46,6 +48,25 @@ function WebhookCard({ wh, onDelete }) {
         .catch(() => setDeliveries([]))
     }
     setExpanded(e => !e)
+  }
+
+  async function handleTest() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await api.post(`/v1/webhooks/${wh.id}/test`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setTestResult({ status: res.data.status, responseCode: res.data.responseCode })
+      // Reset deliveries cache so next expand shows updated list
+      setDeliveries(null)
+    } catch (err) {
+      setTestResult({ status: 'failed', error: err.response?.data?.message || 'Erro de rede' })
+    } finally {
+      setTesting(false)
+      // Clear result after 4s
+      setTimeout(() => setTestResult(null), 4000)
+    }
   }
 
   async function handleDelete() {
@@ -96,6 +117,28 @@ function WebhookCard({ wh, onDelete }) {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            {testResult && (
+              <span
+                className="text-xs font-medium px-2 py-1 rounded-lg"
+                style={{
+                  color: testResult.status === 'delivered' ? '#16A34A' : '#DC2626',
+                  backgroundColor: testResult.status === 'delivered' ? '#F0FDF4' : '#FEF2F2'
+                }}
+              >
+                {testResult.status === 'delivered'
+                  ? `✓ HTTP ${testResult.responseCode}`
+                  : `✗ ${testResult.error || 'Falhou'}`}
+              </span>
+            )}
+            <button
+              onClick={handleTest}
+              disabled={testing || !wh.active}
+              title="Enviar entrega de teste"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 transition-colors cursor-pointer border-0 bg-transparent px-2 py-1 rounded-lg hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FlaskConical size={13} />
+              {testing ? 'A testar...' : 'Testar'}
+            </button>
             <button
               onClick={toggleDeliveries}
               className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer border-0 bg-transparent px-2 py-1 rounded-lg hover:bg-slate-100"
@@ -334,6 +377,7 @@ export default function Webhooks() {
             Quando um evento ocorre, fazemos um POST HTTPS para o teu URL com um JSON assinado via HMAC-SHA256.
             Verifica a assinatura no header <code className="bg-blue-100 px-1 rounded">X-ApiAberta-Signature</code>.
             Se a entrega falhar, tentamos mais 2 vezes (30s e 120s de intervalo).
+            Usa o botão <strong>Testar</strong> para verificar que o teu endpoint está a receber correctamente.
           </div>
         </div>
       </div>
