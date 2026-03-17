@@ -36,6 +36,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem(STORAGE_KEYS.apiKey, newKey)
   }
 
+  function updateName(newName) {
+    setName(newName)
+    localStorage.setItem(STORAGE_KEYS.name, newName)
+  }
+
   function logout() {
     setToken(null)
     setApiKey(null)
@@ -46,7 +51,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, apiKey, email, name, tier, login, logout, updateApiKey }}>
+    <AuthContext.Provider value={{ token, apiKey, email, name, tier, login, logout, updateApiKey, updateName }}>
       {children}
     </AuthContext.Provider>
   )

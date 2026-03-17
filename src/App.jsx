@@ -8,6 +8,7 @@ import Docs from './pages/Docs'
 import Admin from './pages/Admin'
 import Webhooks from './pages/Webhooks'
 import Playground from './pages/Playground'
+import Settings from './pages/Settings'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/admin" element={<Admin />} />
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/playground" element={<Playground />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
