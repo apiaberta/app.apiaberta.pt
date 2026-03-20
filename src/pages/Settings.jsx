@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { User, Lock, CheckCircle, AlertCircle, Loader2, Trash2, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import ApiKeyCard from '../components/ApiKeyCard'
 import api from '../api/client'
@@ -33,6 +33,12 @@ export default function Settings() {
   const [confirmPw, setConfirmPw] = useState('')
   const [pwStatus, setPwStatus] = useState({ type: '', msg: '' })
   const [savingPw, setSavingPw] = useState(false)
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     if (!token) navigate('/', { replace: true })
@@ -84,6 +90,25 @@ export default function Settings() {
       setPwStatus({ type: 'error', msg: err.response?.data?.message || 'Failed to change password.' })
     } finally {
       setSavingPw(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm.')
+      return
+    }
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await api.delete('/v1/auth/account', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      logout()
+      navigate('/', { replace: true })
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete account.')
+      setDeleting(false)
     }
   }
 
@@ -207,19 +232,110 @@ export default function Settings() {
         <ApiKeyCard />
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-6">
-          <h2 className="font-semibold text-red-700 mb-3">Danger Zone</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Logging out will clear your session. Your account and API key will remain active.
-          </p>
-          <button
-            onClick={logout}
-            className="text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 px-4 py-2 rounded-lg transition-colors"
-          >
-            Log out
-          </button>
+        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
+          <h2 className="font-semibold text-red-700 mb-4">Danger Zone</h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Log out</p>
+                <p className="text-xs text-gray-500">Clear your session. Account remains active.</p>
+              </div>
+              <button
+                onClick={logout}
+                className="text-sm font-medium text-gray-600 hover:text-gray-800 border border-gray-300 hover:border-gray-400 px-4 py-2 rounded-lg transition-colors"
+              >
+                Log out
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
+              <div>
+                <p className="text-sm font-medium text-red-900">Delete account</p>
+                <p className="text-xs text-red-700">Account will be deleted after 30 days. Log in to cancel.</p>
+              </div>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 border border-red-300 hover:border-red-400 bg-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Trash2 size={14} />
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer links */}
+        <div className="text-center text-xs text-gray-400 space-x-4">
+          <a href="https://apiaberta.pt/termos" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600">
+            Termos de Uso
+          </a>
+          <a href="https://apiaberta.pt/privacidade" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600">
+            Política de Privacidade
+          </a>
         </div>
       </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Delete Account</h3>
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirm(''); setDeleteError(''); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">
+                  <strong>Warning:</strong> Your account will be scheduled for deletion in 30 days. 
+                  During this period, you can cancel by logging in. After 30 days, all your data 
+                  will be permanently deleted.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirm}
+                  onChange={e => setDeleteConfirm(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="DELETE"
+                />
+              </div>
+
+              {deleteError && (
+                <p className="text-sm text-red-600">{deleteError}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowDeleteModal(false); setDeleteConfirm(''); setDeleteError(''); }}
+                  className="flex-1 text-sm font-medium text-gray-600 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteConfirm !== 'DELETE'}
+                  className="flex-1 flex items-center justify-center gap-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deleting && <Loader2 size={14} className="animate-spin" />}
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
