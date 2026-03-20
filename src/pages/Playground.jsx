@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Play, Copy, Check, Terminal, ChevronRight, Loader2 } from 'lucide-react'
+import { Play, Copy, Check, Terminal, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 const BASE = 'https://api.apiaberta.pt'
@@ -122,29 +122,28 @@ export default function Playground() {
   const [selectedEndpoint, setSelectedEndpoint] = useState(0)
   const [paramValues, setParamValues] = useState({})
   const [loading, setLoading] = useState(false)
-  const [response, setResponse] = useState(null) // { status, body, latency }
+  const [response, setResponse] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState({ 0: true })
 
   useEffect(() => {
     if (!token) navigate('/', { replace: true })
   }, [token, navigate])
 
-  // Reset params when endpoint changes
   useEffect(() => {
     setParamValues({})
     setResponse(null)
+    setSidebarOpen(false)
   }, [selectedGroup, selectedEndpoint])
 
   if (!token) return null
 
   const group = GROUPS[selectedGroup]
   const endpoint = group.endpoints[selectedEndpoint]
-
   const builtUrl = buildUrl(endpoint.path, paramValues)
 
-  const curlCmd = `curl -s \\
-  -H "X-API-Key: ${apiKey || 'YOUR_API_KEY'}" \\
-  "${builtUrl}"`
+  const curlCmd = `curl -s -H "X-API-Key: ${apiKey || 'YOUR_API_KEY'}" "${builtUrl}"`
 
   async function run() {
     setLoading(true)
@@ -171,6 +170,16 @@ export default function Playground() {
     setTimeout(() => setCopied(false), 1800)
   }
 
+  function toggleGroup(gi) {
+    setExpandedGroups(prev => ({ ...prev, [gi]: !prev[gi] }))
+  }
+
+  function selectEndpoint(gi, ei) {
+    setSelectedGroup(gi)
+    setSelectedEndpoint(ei)
+    setExpandedGroups(prev => ({ ...prev, [gi]: true }))
+  }
+
   const statusColor = response
     ? response.status >= 200 && response.status < 300
       ? '#22C55E'
@@ -179,17 +188,125 @@ export default function Playground() {
       : '#F59E0B'
     : '#64748B'
 
+  // Mobile endpoint selector dropdown
+  const MobileSelector = () => (
+    <div className="md:hidden mb-4">
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-slate-200 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: group.color }}
+          />
+          <span className="text-sm font-medium text-slate-700">
+            {group.group} → {endpoint.label}
+          </span>
+        </div>
+        <ChevronDown
+          size={16}
+          className="text-slate-400 transition-transform"
+          style={{ transform: sidebarOpen ? 'rotate(180deg)' : 'rotate(0)' }}
+        />
+      </button>
+
+      {sidebarOpen && (
+        <div className="mt-2 bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden max-h-80 overflow-y-auto">
+          {GROUPS.map((g, gi) => (
+            <div key={g.group}>
+              <button
+                onClick={() => toggleGroup(gi)}
+                className="w-full px-4 py-2.5 flex items-center justify-between bg-slate-50 border-b border-slate-100"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: g.color }}
+                  />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    {g.group}
+                  </span>
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="text-slate-400 transition-transform"
+                  style={{ transform: expandedGroups[gi] ? 'rotate(90deg)' : 'rotate(0)' }}
+                />
+              </button>
+              {expandedGroups[gi] && g.endpoints.map((ep, ei) => {
+                const active = gi === selectedGroup && ei === selectedEndpoint
+                return (
+                  <button
+                    key={ep.path}
+                    onClick={() => selectEndpoint(gi, ei)}
+                    className="w-full text-left px-6 py-2.5 text-sm border-b border-slate-50"
+                    style={{
+                      backgroundColor: active ? '#F0FDF4' : 'transparent',
+                      color: active ? '#15803D' : '#475569',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {ep.label}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  // Desktop sidebar
+  const DesktopSidebar = () => (
+    <div className="hidden md:block flex-shrink-0 w-56">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {GROUPS.map((g, gi) => (
+          <div key={g.group}>
+            <div
+              className="px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+              style={{ backgroundColor: '#F8FAFC', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}
+            >
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: g.color, marginRight: 6 }} />
+              {g.group}
+            </div>
+            {g.endpoints.map((ep, ei) => {
+              const active = gi === selectedGroup && ei === selectedEndpoint
+              return (
+                <button
+                  key={ep.path}
+                  onClick={() => selectEndpoint(gi, ei)}
+                  className="w-full text-left px-4 py-2.5 text-xs border-0 cursor-pointer flex items-center gap-1.5 transition-colors"
+                  style={{
+                    backgroundColor: active ? '#F0FDF4' : 'transparent',
+                    color: active ? '#15803D' : '#475569',
+                    fontWeight: active ? 600 : 400,
+                    borderBottom: '1px solid #F8FAFC',
+                  }}
+                >
+                  {active && <ChevronRight size={11} style={{ color: '#16A34A', flexShrink: 0 }} />}
+                  <span className="truncate">{ep.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-10">
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <div className="flex items-center gap-2 mb-2">
             <Terminal size={18} style={{ color: '#16A34A' }} />
             <span className="text-sm font-medium" style={{ color: '#16A34A' }}>API Playground</span>
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: '#0F172A' }}>
+          <h1 className="text-xl md:text-2xl font-bold" style={{ color: '#0F172A' }}>
             Experimenta a API
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
@@ -197,57 +314,27 @@ export default function Playground() {
           </p>
         </div>
 
+        {/* Mobile selector */}
+        <MobileSelector />
+
         <div className="flex gap-6" style={{ alignItems: 'flex-start' }}>
 
-          {/* Sidebar — endpoint picker */}
-          <div className="flex-shrink-0 w-56">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              {GROUPS.map((g, gi) => (
-                <div key={g.group}>
-                  <div
-                    className="px-4 py-2 text-xs font-semibold uppercase tracking-wider"
-                    style={{ backgroundColor: '#F8FAFC', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}
-                  >
-                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: g.color, marginRight: 6 }} />
-                    {g.group}
-                  </div>
-                  {g.endpoints.map((ep, ei) => {
-                    const active = gi === selectedGroup && ei === selectedEndpoint
-                    return (
-                      <button
-                        key={ep.path}
-                        onClick={() => { setSelectedGroup(gi); setSelectedEndpoint(ei) }}
-                        className="w-full text-left px-4 py-2.5 text-xs border-0 cursor-pointer flex items-center gap-1.5 transition-colors"
-                        style={{
-                          backgroundColor: active ? '#F0FDF4' : 'transparent',
-                          color: active ? '#15803D' : '#475569',
-                          fontWeight: active ? 600 : 400,
-                          borderBottom: '1px solid #F8FAFC',
-                        }}
-                      >
-                        {active && <ChevronRight size={11} style={{ color: '#16A34A', flexShrink: 0 }} />}
-                        <span className="truncate">{ep.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Desktop sidebar */}
+          <DesktopSidebar />
 
           {/* Main panel */}
           <div className="flex-1 flex flex-col gap-4 min-w-0">
 
             {/* Endpoint + params */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-              <div className="flex items-center gap-3 mb-4">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-6">
+              <div className="flex items-center gap-2 md:gap-3 mb-4 flex-wrap">
                 <span
-                  className="text-xs font-bold px-2.5 py-1 rounded-lg"
+                  className="text-xs font-bold px-2 md:px-2.5 py-1 rounded-lg"
                   style={{ backgroundColor: '#DCFCE7', color: '#15803D' }}
                 >
                   GET
                 </span>
-                <code className="text-sm font-mono text-slate-700 break-all">
+                <code className="text-xs md:text-sm font-mono text-slate-700 break-all">
                   {endpoint.path}
                 </code>
               </div>
@@ -259,11 +346,11 @@ export default function Playground() {
                     Parâmetros
                   </div>
                   {endpoint.params.map(p => (
-                    <div key={p.name} className="flex items-center gap-3">
-                      <div className="w-32 flex-shrink-0">
+                    <div key={p.name} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                      <div className="md:w-32 flex-shrink-0 flex items-center gap-1">
                         <code className="text-xs text-slate-700 font-mono">{p.name}</code>
-                        {p.required && <span className="ml-1 text-red-400 text-xs">*</span>}
-                        {p.isPath && <span className="ml-1 text-xs text-orange-500">path</span>}
+                        {p.required && <span className="text-red-400 text-xs">*</span>}
+                        {p.isPath && <span className="text-xs text-orange-500">path</span>}
                       </div>
                       <input
                         type="text"
@@ -273,7 +360,7 @@ export default function Playground() {
                         className="flex-1 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:border-green-400 text-slate-800 font-mono"
                         style={{ backgroundColor: '#FAFAFA' }}
                       />
-                      <span className="text-xs text-slate-400 w-40 flex-shrink-0">{p.description}</span>
+                      <span className="text-xs text-slate-400 md:w-40 flex-shrink-0 hidden md:block">{p.description}</span>
                     </div>
                   ))}
                 </div>
@@ -281,7 +368,7 @@ export default function Playground() {
 
               {/* Built URL preview */}
               <div
-                className="rounded-xl px-4 py-3 mb-4 font-mono text-xs break-all"
+                className="rounded-xl px-3 md:px-4 py-2 md:py-3 mb-4 font-mono text-xs break-all overflow-x-auto"
                 style={{ backgroundColor: '#0F172A', color: '#94A3B8' }}
               >
                 <span style={{ color: '#4ADE80' }}>GET </span>
@@ -292,7 +379,7 @@ export default function Playground() {
               <button
                 onClick={run}
                 disabled={loading}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border-0 cursor-pointer transition-opacity"
+                className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border-0 cursor-pointer transition-opacity"
                 style={{ backgroundColor: '#16A34A', color: 'white', opacity: loading ? 0.7 : 1 }}
               >
                 {loading
@@ -304,7 +391,7 @@ export default function Playground() {
             </div>
 
             {/* cURL command */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 md:p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">cURL</span>
                 <button
@@ -317,7 +404,7 @@ export default function Playground() {
                 </button>
               </div>
               <pre
-                className="text-xs font-mono m-0 p-0 whitespace-pre-wrap break-all"
+                className="text-xs font-mono m-0 p-0 whitespace-pre-wrap break-all overflow-x-auto"
                 style={{ color: '#334155', lineHeight: '1.6' }}
               >
                 {curlCmd}
@@ -327,9 +414,9 @@ export default function Playground() {
             {/* Response */}
             {response && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 md:gap-3 px-4 md:px-5 py-3 border-b border-slate-100 flex-wrap">
                   <span
-                    className="text-xs font-bold px-2.5 py-1 rounded-lg"
+                    className="text-xs font-bold px-2 md:px-2.5 py-1 rounded-lg"
                     style={{ backgroundColor: response.status >= 200 && response.status < 300 ? '#DCFCE7' : '#FEE2E2', color: statusColor }}
                   >
                     {response.status || 'ERR'}
@@ -340,8 +427,8 @@ export default function Playground() {
                   <span className="text-xs text-slate-400 ml-auto">Response</span>
                 </div>
                 <div
-                  className="p-5 overflow-auto"
-                  style={{ backgroundColor: '#0F172A', maxHeight: 420 }}
+                  className="p-3 md:p-5 overflow-auto"
+                  style={{ backgroundColor: '#0F172A', maxHeight: 320 }}
                 >
                   <pre
                     className="m-0 text-xs font-mono leading-relaxed"
@@ -357,10 +444,10 @@ export default function Playground() {
             {/* Empty state */}
             {!response && !loading && (
               <div
-                className="rounded-2xl border-2 border-dashed border-slate-200 p-10 flex flex-col items-center justify-center text-center"
+                className="rounded-2xl border-2 border-dashed border-slate-200 p-6 md:p-10 flex flex-col items-center justify-center text-center"
                 style={{ color: '#94A3B8' }}
               >
-                <Terminal size={32} style={{ marginBottom: 12, opacity: 0.4 }} />
+                <Terminal size={28} style={{ marginBottom: 12, opacity: 0.4 }} />
                 <p className="text-sm">Clica em <strong>Executar</strong> para ver a resposta aqui</p>
               </div>
             )}
