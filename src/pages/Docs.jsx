@@ -4,6 +4,24 @@ import CodeBlock from '../components/CodeBlock'
 const CURL_AUTH = `curl -H "X-API-Key: ak_your_key_here" \\
   https://api.apiaberta.pt/v1/fuel/prices`
 
+const NIF_VALID = `curl -H "X-API-Key: ak_your_key_here" \
+  https://api.apiaberta.pt/v1/nif/validate/509442013`
+
+const NIF_INVALID = `curl -H "X-API-Key: ak_your_key_here" \
+  https://api.apiaberta.pt/v1/nif/validate/123456789`
+
+const NIF_VALID_RESP = `{
+  "nif": "509442013",
+  "valid": true,
+  "type": "Pessoa coletiva (empresa)"
+}`
+
+const NIF_INVALID_RESP = `{
+  "nif": "123456789",
+  "valid": false,
+  "reason": "checksum_invalid"
+}
+
 const JS_FETCH = `const response = await fetch('https://api.apiaberta.pt/v1/fuel/prices', {
   headers: {
     'X-API-Key': 'ak_your_key_here',
@@ -63,6 +81,7 @@ export default function Docs() {
               ['#rate-limits', 'Rate limits'],
               ['#examples', 'Example requests'],
               ['#errors', 'Error codes'],
+              ['#nif', 'NIF Validator'],
             ].map(([href, label]) => (
               <li key={href}>
                 <a
@@ -194,6 +213,65 @@ export default function Docs() {
                 <p className="text-sm font-medium text-slate-700 mb-2">JavaScript (fetch)</p>
                 <CodeBlock code={JS_FETCH} language="javascript" label="JavaScript" />
               </div>
+            </div>
+          </section>
+
+
+          {/* NIF Validator */}
+          <section id="nif">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>NIF Validator</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Valida NIFs portugueses usando o algoritmo MOD 11. Retorna o tipo de entidade (pessoa singular, coletiva, etc.).
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nif/validate/:nif</td>
+                    <td className="px-5 py-3 text-slate-600">Valida um NIF português</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-sm font-medium text-slate-700 mb-2">Valid NIF (empresa)</p>
+            <CodeBlock code={NIF_VALID} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={NIF_VALID_RESP} language="json" label="200 OK" />
+            </div>
+
+            <p className="text-sm font-medium text-slate-700 mb-2 mt-6">Invalid NIF (checksum)</p>
+            <CodeBlock code={NIF_INVALID} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={NIF_INVALID_RESP} language="json" label="200 OK" />
+            </div>
+
+            <div className="mt-6 rounded-xl border border-slate-200 p-4 text-sm text-slate-600">
+              <p className="font-semibold text-slate-700 mb-1">Parâmetros</p>
+              <ul className="list-disc list-inside flex flex-col gap-1">
+                <li><code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">nif</code> (path) — NIF a validar, 9 dígitos</li>
+              </ul>
+              <p className="font-semibold text-slate-700 mt-3 mb-1">Tipos de NIF</p>
+              <ul className="list-disc list-inside flex flex-col gap-1 text-xs">
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">1</code> — Pessoa singular (residente)</li>
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">2</code> — Pessoa singular (não residente)</li>
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">5</code> — Pessoa coletiva (empresa)</li>
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">3</code> — Entidade pública</li>
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">6</code> — Entidade singular não residente</li>
+                <li><code className="bg-slate-100 px-1 py-0.5 rounded">7/8/9</code> — Caso especial / Forças armadas</li>
+              </ul>
             </div>
           </section>
 
