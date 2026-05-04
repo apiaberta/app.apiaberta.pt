@@ -22,6 +22,8 @@ const NIF_INVALID_RESP = `{
   "reason": "checksum_invalid"
 }
 
+`
+
 const JS_FETCH = `const response = await fetch('https://api.apiaberta.pt/v1/fuel/prices', {
   headers: {
     'X-API-Key': 'ak_your_key_here',
@@ -82,6 +84,9 @@ export default function Docs() {
               ['#examples', 'Example requests'],
               ['#errors', 'Error codes'],
               ['#nif', 'NIF Validator'],
+              ['#prr', 'PRR / PT2030'],
+              ['#nasafirms', 'NASA FIRMS'],
+              ['#dre', 'DRE Legislation'],
             ].map(([href, label]) => (
               <li key={href}>
                 <a
@@ -273,6 +278,123 @@ export default function Docs() {
                 <li><code className="bg-slate-100 px-1 py-0.5 rounded">7/8/9</code> — Caso especial / Forças armadas</li>
               </ul>
             </div>
+          </section>
+
+          {/* PRR / PT2030 */}
+          <section id="prr">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>PRR / PT2030</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Fundos europeus do Plano de Recuperação e Resiliência (PRR) e PT2030. Dados agregados de transparencia.gov.pt e dados.gov.pt.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/prr/projects</td>
+                    <td className="px-5 py-3 text-slate-600">Lista de projetos PRR/PT2030</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/prr/projects/:id</td>
+                    <td className="px-5 py-3 text-slate-600">Detalhes de um projeto</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  https://api.apiaberta.pt/v1/prr/projects?limit=3`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "data": [\n    {\n      "id": "C01",\n      "name": "Cuidados de saude primarios",\n      "section": "investment",\n      "component": "C01 - Housing First",\n      "total": 61379442\n    }\n  ],\n  "total": 61,\n  "source": "https://transparencia.gov.pt"\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* NASA FIRMS */}
+          <section id="nasafirms">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>NASA FIRMS</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Deteção de incêndios via satélite pelos sensores VIIRS e MODIS. Hotspots ativos com coordenadas, luminosidade e data/hora de aquisição.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nasafirms/hotspots</td>
+                    <td className="px-5 py-3 text-slate-600">Hotspots de fogo detectados</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nasafirms/stats</td>
+                    <td className="px-5 py-3 text-slate-600">Estatísticas agregadas</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  https://api.apiaberta.pt/v1/nasafirms/hotspots?satellite=VIIRS&limit=2`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "data": [\n    {\n      "latitude": 37.8856,\n      "longitude": -7.8523,\n      "brightness": 310.2,\n      "satellite": "VIIRS",\n      "acq_date": "2026-04-09",\n      "acq_time": "0342",\n      "frp": 5.6,\n      "confidence": "nominal"\n    }\n  ],\n  "meta": { "source": "NASA FIRMS", "count": 12 }\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* DRE Legislation */}
+          <section id="dre">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>DRE Legislation</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Legislação publicada no Diário da República. Permite procurar documentos por série, ano e termo de pesquisa.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/dre/legislation</td>
+                    <td className="px-5 py-3 text-slate-600">Lista de legislação recente</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/dre/search?q=termo</td>
+                    <td className="px-5 py-3 text-slate-600">Pesquisa por termo</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/dre/search?q=prote%C3%A7%C3%A3o+de+dados"`} language="bash" label="cURL" />
           </section>
 
           {/* Full docs CTA */}

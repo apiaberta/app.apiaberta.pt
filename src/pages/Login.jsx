@@ -15,8 +15,17 @@ export default function Login() {
   const [error, setError] = useState(null)
 
   // Already authenticated → go to dashboard
+  // Validate token before redirecting to dashboard — avoids redirect loop with expired tokens
   useEffect(() => {
-    if (token) navigate('/dashboard', { replace: true })
+    if (!token) return
+    fetch(`${import.meta.env.VITE_API_URL || 'https://api.apiaberta.pt'}/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => {
+        if (res.ok) navigate('/dashboard', { replace: true })
+        else localStorage.removeItem('token')
+      })
+      .catch(() => localStorage.removeItem('token'))
   }, [token, navigate])
 
   async function handleSubmit(e) {
