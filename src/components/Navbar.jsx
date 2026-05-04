@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus, Shield, Webhook, Terminal, Settings, Menu, X } from 'lucide-react'
+import { LogOut, BookOpen, LayoutDashboard, Zap, UserPlus, Shield, Webhook, Terminal, Settings, Menu, X, DollarSign, UserCheck } from 'lucide-react'
 
 export default function Navbar() {
   const { token, tier, logout } = useAuth()
@@ -57,6 +57,8 @@ export default function Navbar() {
             {token && <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>}
             {token && <NavLink to="/playground" icon={Terminal}>Playground</NavLink>}
             {token && <NavLink to="/webhooks" icon={Webhook}>Webhooks</NavLink>}
+            <NavLink to="/explore/currency" icon={DollarSign}>Currency</NavLink>
+            <NavLink to="/explore/nif" icon={UserCheck}>NIF</NavLink>
             {token && tier === 'admin' && (
               <Link
                 to="/admin"
@@ -97,6 +99,8 @@ export default function Navbar() {
             {token && <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>}
             {token && <NavLink to="/playground" icon={Terminal}>Playground</NavLink>}
             {token && <NavLink to="/webhooks" icon={Webhook}>Webhooks</NavLink>}
+            <NavLink to="/explore/currency" icon={DollarSign}>Currency</NavLink>
+            <NavLink to="/explore/nif" icon={UserCheck}>NIF</NavLink>
             {token && tier === 'admin' && (
               <Link
                 to="/admin"
