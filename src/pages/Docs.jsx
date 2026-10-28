@@ -117,7 +117,7 @@ function Limitations({ items }) {
 function RateNote() {
   return (
     <p className="text-xs text-slate-500 mt-4 mb-0">
-      Limites deste prefixo: 30 pedidos/min por IP sem chave; 300/min com cabeçalho{' '}
+      Limites deste prefixo: 30 pedidos/min por endereço IP sem chave; 300/min com cabeçalho{' '}
       <code className="bg-slate-100 px-1 py-0.5 rounded">X-API-Key</code>.
     </p>
   )
@@ -211,7 +211,7 @@ export default function Docs() {
             Referência da API Aberta
           </h1>
           <p className="text-slate-500 mt-2 text-lg max-w-3xl">
-            As 18 APIs do gateway{' '}
+            18 APIs públicas no host{' '}
             <a
               href="https://api.apiaberta.pt"
               className="font-medium no-underline hover:underline"
@@ -219,7 +219,7 @@ export default function Docs() {
             >
               api.apiaberta.pt
             </a>
-            , com endpoints, parâmetros e respostas obtidas na API pública em {CAPTURED_AT}.
+            , com respostas reais de {CAPTURED_AT}.
           </p>
         </div>
 
@@ -251,7 +251,7 @@ export default function Docs() {
         <div className="flex gap-10 items-start">
           <nav
             aria-label="Índice da documentação"
-            className="hidden lg:block w-56 shrink-0 sticky top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-2"
+            className="hidden lg:block w-64 shrink-0 sticky top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-2"
           >
             <p className="text-xs font-semibold uppercase tracking-wider mb-3 text-slate-400">Índice</p>
             <ol className="list-none p-0 m-0 flex flex-col gap-0.5">
@@ -263,7 +263,7 @@ export default function Docs() {
                     <a
                       href={item.href}
                       aria-current={current ? 'location' : undefined}
-                      className={`block text-sm no-underline rounded-lg px-3 py-1.5 ${current ? '' : 'hover:bg-slate-100'}`}
+                      className={`block text-sm no-underline rounded-lg px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 ${current ? '' : 'hover:bg-slate-100'}`}
                       style={{
                         color: current ? '#15803D' : '#475569',
                         fontWeight: current ? 600 : 500,
@@ -285,31 +285,27 @@ export default function Docs() {
               <SectionHeading icon={Zap}>Começar</SectionHeading>
               <div className="flex flex-col gap-4 text-slate-600 text-sm leading-relaxed">
                 <p>
-                  A API Aberta agrega dados públicos portugueses num único host REST.
-                  A URL base é{' '}
-                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">https://api.apiaberta.pt</code>.
-                  A lista viva dos 18 serviços está em{' '}
+                  URL:{' '}
+                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">https://api.apiaberta.pt</code>
+                  {' · '}
                   <a
                     href="https://api.apiaberta.pt/v1/status"
                     className="font-medium no-underline hover:underline"
                     style={{ color: '#15803D' }}
                   >
-                    GET /v1/status
+                    pedido GET /v1/status
                   </a>
-                  .
                 </p>
                 <ol className="list-decimal list-inside flex flex-col gap-2 pl-1">
-                  <li>
-                    Os endpoints de dados são públicos: pode chamá-los sem chave.
-                  </li>
+                  <li>Chame os dados sem chave.</li>
                   <li>
                     <a href="/" className="font-medium no-underline hover:underline" style={{ color: '#16A34A' }}>
                       Crie uma conta
                     </a>{' '}
-                    se quiser uma chave <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">ak_…</code> e o limite de 300 pedidos/min.
+                    para 300 pedidos/min.
                   </li>
                   <li>
-                    Envie a chave no cabeçalho <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code>.
+                    Envie <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> no cabeçalho.
                   </li>
                 </ol>
                 <CodeBlock code={JS_FETCH} language="javascript" label="JavaScript" />
@@ -321,8 +317,8 @@ export default function Docs() {
               <p className="text-slate-600 text-sm leading-relaxed mb-4">
                 A chave é opcional nos 18 prefixos de dados. Sem{' '}
                 <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> o pedido
-                conta para o limite por IP. Com chave, conta para o limite da chave.
-                Rotas de conta, administração e webhooks continuam a exigir JWT ou chave.
+                conta para o limite do endereço de Internet Protocol (IP). Com chave, conta para o limite da chave.
+                Rotas de conta, administração e webhooks exigem JWT ou chave.
               </p>
               <CodeBlock code={CURL_OPTIONAL_KEY} language="bash" label="cURL" />
             </section>
@@ -330,11 +326,12 @@ export default function Docs() {
             <section id="limites" className="scroll-mt-24">
               <SectionHeading>Limites de pedidos</SectionHeading>
               <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                O gateway aplica um limite global de 1 minuto, por IP se não houver chave e por chave se o cabeçalho existir.
-                Não há outros escalões publicados neste momento.
+                Limite global de 1 minuto: por endereço IP sem chave, por chave com o cabeçalho.
+                Não há outros escalões publicados.
               </p>
               <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
                 <table className="w-full text-sm border-collapse">
+                  <caption className="sr-only">Limites de pedidos por minuto</caption>
                   <thead>
                     <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                       <th className="text-left px-5 py-3 font-semibold text-slate-700">Identidade</th>
@@ -343,7 +340,7 @@ export default function Docs() {
                   </thead>
                   <tbody>
                     <tr className="border-b border-slate-100">
-                      <td className="px-5 py-3 text-slate-700">Sem chave (por IP)</td>
+                      <td className="px-5 py-3 text-slate-700">Sem chave (por endereço IP)</td>
                       <td className="px-5 py-3 text-slate-600">30</td>
                     </tr>
                     <tr>
@@ -367,6 +364,7 @@ export default function Docs() {
               <SectionHeading>Erros</SectionHeading>
               <div className="rounded-2xl overflow-hidden border border-slate-200">
                 <table className="w-full text-sm border-collapse">
+                  <caption className="sr-only">Códigos de erro HTTP</caption>
                   <thead>
                     <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                       <th className="text-left px-5 py-3 font-semibold text-slate-700">Código</th>
@@ -384,7 +382,7 @@ export default function Docs() {
                     </tr>
                     <tr className="border-b border-slate-100">
                       <td className="px-5 py-3 font-mono text-xs">429</td>
-                      <td className="px-5 py-3 text-slate-600">Limite de 30/min (IP) ou 300/min (chave) excedido.</td>
+                      <td className="px-5 py-3 text-slate-600">Limite de 30/min (endereço IP) ou 300/min (chave) excedido.</td>
                     </tr>
                     <tr>
                       <td className="px-5 py-3 font-mono text-xs">502</td>
