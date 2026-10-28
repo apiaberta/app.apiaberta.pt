@@ -43,41 +43,69 @@ function RequiredBadge({ required }) {
 function ParamTable({ params }) {
   if (!params?.length) return null
   return (
-    <div className="rounded-xl border border-slate-200 mt-3 overflow-x-auto">
-      <table className="w-full text-sm border-collapse min-w-[40rem]">
-        <caption className="sr-only">Parâmetros do endpoint</caption>
-        <thead>
-          <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Parâmetro</th>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Onde</th>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Tipo</th>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Obrigatório</th>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Exemplo</th>
-            <th className="text-left px-4 py-2 font-semibold text-slate-700">Descrição</th>
-          </tr>
-        </thead>
-        <tbody>
-          {params.map((param) => (
-            <tr key={`${param.in}-${param.name}`} className="border-b border-slate-100 last:border-0 align-top">
-              <td className="px-4 py-2">
-                <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{param.name}</code>
-              </td>
-              <td className="px-4 py-2 text-slate-500 text-xs">{param.in}</td>
-              <td className="px-4 py-2 text-slate-600 text-xs">{param.type}</td>
-              <td className="px-4 py-2"><RequiredBadge required={param.required} /></td>
-              <td className="px-4 py-2">
-                {param.example ? (
-                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs break-all">{param.example}</code>
-                ) : (
-                  <span className="text-slate-400">—</span>
-                )}
-              </td>
-              <td className="px-4 py-2 text-slate-600 text-xs leading-relaxed">{param.desc || '—'}</td>
+    <>
+      <div className="md:hidden mt-3 flex flex-col gap-2">
+        {params.map((param) => (
+          <div
+            key={`${param.in}-${param.name}`}
+            className="rounded-xl border border-slate-200 px-3 py-3"
+            style={{ backgroundColor: '#F8FAFC' }}
+          >
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <code className="bg-white px-1.5 py-0.5 rounded text-xs border border-slate-200">{param.name}</code>
+              <RequiredBadge required={param.required} />
+            </div>
+            <p className="text-xs text-slate-500 mt-2 mb-0">
+              {param.in} · {param.type}
+              {param.example ? (
+                <>
+                  {' · '}
+                  <code className="bg-white px-1 py-0.5 rounded break-all">{param.example}</code>
+                </>
+              ) : null}
+            </p>
+            {param.desc ? (
+              <p className="text-xs text-slate-600 mt-1 mb-0 leading-relaxed">{param.desc}</p>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className="hidden md:block rounded-xl border border-slate-200 mt-3 overflow-x-auto">
+        <table className="w-full text-sm border-collapse min-w-[40rem]">
+          <caption className="sr-only">Parâmetros do endpoint</caption>
+          <thead>
+            <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Parâmetro</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Onde</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Tipo</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Obrigatório</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Exemplo</th>
+              <th className="text-left px-4 py-2 font-semibold text-slate-700">Descrição</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {params.map((param) => (
+              <tr key={`${param.in}-${param.name}`} className="border-b border-slate-100 last:border-0 align-top">
+                <td className="px-4 py-2">
+                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{param.name}</code>
+                </td>
+                <td className="px-4 py-2 text-slate-500 text-xs">{param.in}</td>
+                <td className="px-4 py-2 text-slate-600 text-xs">{param.type}</td>
+                <td className="px-4 py-2"><RequiredBadge required={param.required} /></td>
+                <td className="px-4 py-2">
+                  {param.example ? (
+                    <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs break-all">{param.example}</code>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-slate-600 text-xs leading-relaxed">{param.desc || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
