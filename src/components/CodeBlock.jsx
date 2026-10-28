@@ -41,7 +41,7 @@ export default function CodeBlock({ code, language = 'bash', label }) {
           }
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? 'Copiado' : 'Copiar'}
         </button>
       </div>
       {/* Code */}
