@@ -87,6 +87,11 @@ export default function Docs() {
               ['#prr', 'PRR / PT2030'],
               ['#nasafirms', 'NASA FIRMS'],
               ['#dre', 'DRE Legislation'],
+              ['#carris', 'Carris Metropolitana'],
+              ['#gtfs', 'Horários (GTFS)'],
+              ['#parlamento', 'Parlamento'],
+              ['#sns', 'SNS Transparência'],
+              ['#ipma-seismic', 'Sismos (IPMA)'],
             ].map(([href, label]) => (
               <li key={href}>
                 <a
@@ -395,6 +400,266 @@ export default function Docs() {
             </div>
 
             <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/dre/search?q=prote%C3%A7%C3%A3o+de+dados"`} language="bash" label="cURL" />
+          </section>
+
+          {/* Carris Metropolitana */}
+          <section id="carris">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Carris Metropolitana</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Posições de veículos em tempo real (GTFS-RT), chegadas previstas por paragem, alertas de serviço, linhas e paragens da Carris Metropolitana.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/vehicles"}</td>
+                    <td className="px-5 py-3 text-slate-600">Veículos em circulação (tempo real)</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/stops/{id}/arrivals"}</td>
+                    <td className="px-5 py-3 text-slate-600">Próximas chegadas a uma paragem</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/alerts"}</td>
+                    <td className="px-5 py-3 text-slate-600">Alertas de serviço ativos</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/lines"}</td>
+                    <td className="px-5 py-3 text-slate-600">Linhas</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/stops"}</td>
+                    <td className="px-5 py-3 text-slate-600">Paragens</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/carris/vehicles?limit=1"`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "count": 1,\n  "updated_at": "2026-10-28T06:08:00.463Z",\n  "stale": false,\n  "data": [\n    {\n      "id": "[YA15B]2418",\n      "line_id": "3715",\n      "route_id": "[YA15B]3715_0",\n      "pattern_id": "[PL3CL][YA15B]3715_0_2",\n      "trip_id": "[PL3CL][YA15B]3715_0_2_0600_0629_0_ESC_DU",\n      "stop_id": "140639",\n      "lat": 38.631508,\n      "lon": -9.149358,\n      "bearing": 339,\n      "current_status": "STOPPED_AT",\n      "occupancy_status": "NO_DATA_AVAILABLE",\n      "timestamp": "2026-10-28T06:07:48.000Z"\n    }\n  ]\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* Horários (GTFS) */}
+          <section id="gtfs">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Horários (GTFS)</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Horários planeados de transportes públicos (Carris Metropolitana, Metro de Lisboa, CP, Fertagus, Metro do Porto, STCP), importados diariamente dos feeds GTFS oficiais.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/feeds"}</td>
+                    <td className="px-5 py-3 text-slate-600">Feeds disponíveis e validade</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/stops?near=lat,lon"}</td>
+                    <td className="px-5 py-3 text-slate-600">Paragens perto de um ponto</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/stops/{feed}/{stop}/departures"}</td>
+                    <td className="px-5 py-3 text-slate-600">Próximas partidas de uma paragem</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/departures/near?lat=&lon=&radius="}</td>
+                    <td className="px-5 py-3 text-slate-600">Próximas partidas perto de um ponto</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/routes"}</td>
+                    <td className="px-5 py-3 text-slate-600">Linhas/rotas</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/changes"}</td>
+                    <td className="px-5 py-3 text-slate-600">Alterações detetadas nos feeds</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/gtfs/stops/metro-lisboa/AE/departures?limit=2"`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "feed_id": "metro-lisboa",\n  "stop_id": "AE",\n  "date": "2026-10-28",\n  "feed_expired": false,\n  "data": [\n    {\n      "time": "06:38",\n      "ts": "2026-10-28T06:38:42.000Z",\n      "route_id": "C",\n      "route_short_name": "Vd",\n      "headsign": "Cais Do Sodré",\n      "trip_id": "I2_21092026_C_C39_CS_I2-tTE-CS_18_21.C1"\n    },\n    {\n      "time": "06:40",\n      "ts": "2026-10-28T06:40:36.000Z",\n      "route_id": "C",\n      "route_short_name": "Vd",\n      "headsign": "Telheiras",\n      "trip_id": "I2_21092026_C_C39_CS_I2-CS-tTE_19_25.C1"\n    }\n  ]\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* Parlamento */}
+          <section id="parlamento">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Parlamento</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Atividade da Assembleia da República: iniciativas legislativas, votações com sentido de voto por grupo parlamentar, deputados e petições.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/iniciativas"}</td>
+                    <td className="px-5 py-3 text-slate-600">Iniciativas legislativas</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/votacoes"}</td>
+                    <td className="px-5 py-3 text-slate-600">Votações e sentido de voto</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/deputados"}</td>
+                    <td className="px-5 py-3 text-slate-600">Deputados</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/peticoes"}</td>
+                    <td className="px-5 py-3 text-slate-600">Petições</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/parlamento/votacoes?limit=1"`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "count": 1,\n  "total": 2285,\n  "data": [\n    {\n      "vot_id": "193219",\n      "data": "2026-10-21T00:00:00.000Z",\n      "resultado": "Rejeitado",\n      "unanime": false,\n      "fase": "Votação na generalidade",\n      "ini_id": "377314",\n      "ini_titulo": "Recomenda ao Governo que seja estabelecido um modelo nacional de financiamento dos corpos de bombeiros municipais e detidos por associações humanitárias de bombeiros",\n      "a_favor": [\n        "IL",\n        "L",\n        "PCP",\n        "BE",\n        "PAN",\n        "JPP"\n      ],\n      "contra": [\n        "PSD",\n        "CDS-PP"\n      ],\n      "abstencao": [\n        "CH",\n        "PS"\n      ]\n    }\n  ]\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* SNS Transparência */}
+          <section id="sns">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>SNS Transparência</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Indicadores do Portal da Transparência do SNS: urgências, triagem de Manchester, tempos de espera para cirurgia e consultas, cuidados primários e recursos humanos. Datasets: urgencias, urgencias_triagem, cirurgia_tmrg, cirurgia_tmrg_onco, consultas_hospitalares, consultas_tmrg, consultas_csp, rh.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/datasets"}</td>
+                    <td className="px-5 py-3 text-slate-600">Datasets disponíveis</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/{dataset}"}</td>
+                    <td className="px-5 py-3 text-slate-600">Registos mensais por instituição</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/{dataset}/national"}</td>
+                    <td className="px-5 py-3 text-slate-600">Série nacional agregada</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/entidades"}</td>
+                    <td className="px-5 py-3 text-slate-600">Hospitais, ULS e ACES</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/sns/urgencias/national"`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "count": 163,\n  "data": [\n    {\n      "period": "2026-07",\n      "geral": 2465250,\n      "pediatrica": 601862,\n      "obstetricia": 190822,\n      "psiquiatrica": 3767,\n      "total": 3261701\n    }\n  ]\n}`} language="json" label="200 OK" />
+            </div>
+          </section>
+
+          {/* Sismos (IPMA) */}
+          <section id="ipma-seismic">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap size={18} style={{ color: '#16A34A' }} />
+              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Sismos (IPMA)</h2>
+            </div>
+            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+              Atividade sísmica registada pelo IPMA no Continente, Madeira e Açores.
+            </p>
+
+            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
+                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic"}</td>
+                    <td className="px-5 py-3 text-slate-600">Sismos recentes</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic/latest"}</td>
+                    <td className="px-5 py-3 text-slate-600">Último sismo por região</td>
+                  </tr>
+                  <tr className="border-b border-slate-100">
+                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
+                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic/{id}"}</td>
+                    <td className="px-5 py-3 text-slate-600">Detalhe de um sismo</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/ipma/seismic?limit=1"`} language="bash" label="cURL" />
+            <div className="mt-3">
+              <CodeBlock code={`{\n  "count": 1,\n  "total": 411,\n  "data": [\n    {\n      "id": "ad90cacee5ddfde335f9b2a3e9ce89e1f6639f27",\n      "time": "2026-10-28T04:30:18.000Z",\n      "lat": 37.338,\n      "lon": -1.52,\n      "depth_km": 34,\n      "magnitude": 2.5,\n      "mag_type": "L",\n      "intensity": null,\n      "sensed": null,\n      "region": "continente-madeira",\n      "obs_region": "SE Lorca (ESP)",\n      "map_url": null,\n      "shakemap_url": null\n    }\n  ]\n}`} language="json" label="200 OK" />
+            </div>
           </section>
 
           {/* Full docs CTA */}
