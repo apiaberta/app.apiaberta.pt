@@ -1,690 +1,436 @@
-import { ExternalLink, Shield, Zap, BookOpen } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { BookOpen, ExternalLink, Shield, Zap, AlertTriangle, Database } from 'lucide-react'
 import CodeBlock from '../components/CodeBlock'
+import { APIS, CAPTURED_AT, NAV } from '../docs/catalog'
 
-const CURL_AUTH = `curl -H "X-API-Key: ak_your_key_here" \\
-  https://api.apiaberta.pt/v1/fuel/prices`
+const CURL_OPTIONAL_KEY = `curl "https://api.apiaberta.pt/v1/fuel/prices"
+curl -H "X-API-Key: ak_a_sua_chave" "https://api.apiaberta.pt/v1/fuel/prices"`
 
-const NIF_VALID = `curl -H "X-API-Key: ak_your_key_here" \
-  https://api.apiaberta.pt/v1/nif/validate/509442013`
-
-const NIF_INVALID = `curl -H "X-API-Key: ak_your_key_here" \
-  https://api.apiaberta.pt/v1/nif/validate/123456789`
-
-const NIF_VALID_RESP = `{
-  "nif": "509442013",
-  "valid": true,
-  "type": "Pessoa coletiva (empresa)"
-}`
-
-const NIF_INVALID_RESP = `{
-  "nif": "123456789",
-  "valid": false,
-  "reason": "checksum_invalid"
-}
-
-`
-
-const JS_FETCH = `const response = await fetch('https://api.apiaberta.pt/v1/fuel/prices', {
-  headers: {
-    'X-API-Key': 'ak_your_key_here',
-  },
-})
-
-const data = await response.json()
+const JS_FETCH = `const res = await fetch('https://api.apiaberta.pt/v1/fuel/prices')
+const data = await res.json()
 console.log(data)`
 
-const RATE_LIMIT_RESPONSE = `HTTP/1.1 429 Too Many Requests
-X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 0
-X-RateLimit-Reset: 1708345678
-Retry-After: 12
-
-{
-  "error": "rate_limit_exceeded",
-  "message": "Too many requests. Please retry after 12 seconds."
+const RATE_LIMIT_429 = `{
+  "error": "Too Many Requests",
+  "message": "Rate limit exceeded. Upgrade your plan at apiaberta.pt",
+  "statusCode": 429
 }`
 
-const ERROR_RESPONSE = `{
-  "error": "unauthorized",
-  "message": "Missing or invalid X-API-Key header"
-}`
+const RATE_LIMIT_HEADERS = `HTTP/1.1 200 OK
+x-ratelimit-limit: 30
+x-ratelimit-remaining: 24
+x-ratelimit-reset: 11`
+
+function MethodBadge() {
+  return (
+    <span
+      className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0"
+      style={{ backgroundColor: '#F0FDF4', color: '#15803D' }}
+    >
+      GET
+    </span>
+  )
+}
+
+function RequiredBadge({ required }) {
+  return required ? (
+    <span className="text-xs font-medium" style={{ color: '#B45309' }}>obrigatório</span>
+  ) : (
+    <span className="text-xs text-slate-400">opcional</span>
+  )
+}
+
+function ParamTable({ params }) {
+  if (!params?.length) return null
+  return (
+    <div className="rounded-xl border border-slate-200 mt-3 overflow-x-auto">
+      <table className="w-full text-sm border-collapse min-w-[40rem]">
+        <caption className="sr-only">Parâmetros do endpoint</caption>
+        <thead>
+          <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Parâmetro</th>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Onde</th>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Tipo</th>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Obrigatório</th>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Exemplo</th>
+            <th className="text-left px-4 py-2 font-semibold text-slate-700">Descrição</th>
+          </tr>
+        </thead>
+        <tbody>
+          {params.map((param) => (
+            <tr key={`${param.in}-${param.name}`} className="border-b border-slate-100 last:border-0 align-top">
+              <td className="px-4 py-2">
+                <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{param.name}</code>
+              </td>
+              <td className="px-4 py-2 text-slate-500 text-xs">{param.in}</td>
+              <td className="px-4 py-2 text-slate-600 text-xs">{param.type}</td>
+              <td className="px-4 py-2"><RequiredBadge required={param.required} /></td>
+              <td className="px-4 py-2">
+                {param.example ? (
+                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs break-all">{param.example}</code>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </td>
+              <td className="px-4 py-2 text-slate-600 text-xs leading-relaxed">{param.desc || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function EndpointBlock({ endpoint }) {
+  return (
+    <div className="border-b border-slate-100 last:border-0 px-4 py-4">
+      <div className="flex items-start gap-3 flex-wrap">
+        <MethodBadge />
+        <code className="text-xs sm:text-sm font-mono text-slate-800 break-all">{endpoint.path}</code>
+      </div>
+      <p className="text-sm text-slate-600 mt-2 mb-0 leading-relaxed">{endpoint.description}</p>
+      <ParamTable params={endpoint.params} />
+    </div>
+  )
+}
+
+function Limitations({ items }) {
+  if (!items?.length) return null
+  return (
+    <div
+      className="rounded-xl p-4 mt-6"
+      style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <AlertTriangle size={16} style={{ color: '#B45309' }} aria-hidden="true" />
+        <p className="text-sm font-semibold m-0" style={{ color: '#92400E' }}>Limitações conhecidas</p>
+      </div>
+      <ul className="m-0 pl-5 text-sm leading-relaxed" style={{ color: '#78350F' }}>
+        {items.map((item) => (
+          <li key={item} className="mb-1 last:mb-0">{item}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function RateNote() {
+  return (
+    <p className="text-xs text-slate-500 mt-4 mb-0">
+      Limites deste prefixo: 30 pedidos/min por IP sem chave; 300/min com cabeçalho{' '}
+      <code className="bg-slate-100 px-1 py-0.5 rounded">X-API-Key</code>.
+    </p>
+  )
+}
+
+function ApiBody({ api }) {
+  return (
+    <>
+      <p className="text-slate-600 text-sm leading-relaxed mb-4">{api.description}</p>
+      <p className="text-sm text-slate-600 mb-5">
+        <span className="font-medium text-slate-700">Fonte dos dados: </span>
+        <a
+          href={api.source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium no-underline hover:underline"
+          style={{ color: '#15803D' }}
+        >
+          {api.source.entity}
+        </a>
+        <span className="text-slate-400"> · </span>
+        <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{api.prefix}</code>
+        {api.version ? (
+          <>
+            <span className="text-slate-400"> · </span>
+            <span className="text-slate-500">v{api.version}</span>
+          </>
+        ) : null}
+      </p>
+
+      <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+        {api.endpoints.map((endpoint) => (
+          <EndpointBlock key={endpoint.path} endpoint={endpoint} />
+        ))}
+      </div>
+
+      <p className="text-sm font-medium text-slate-700 mb-2">Exemplo de pedido</p>
+      <CodeBlock code={api.curl} language="bash" label="cURL" />
+      <p className="text-sm font-medium text-slate-700 mb-2 mt-5">
+        Resposta real ({CAPTURED_AT})
+      </p>
+      <CodeBlock code={api.response} language="json" label={api.responseLabel || '200 OK'} />
+      <RateNote />
+      <Limitations items={api.limitations} />
+    </>
+  )
+}
+
+function SectionHeading({ icon: Icon, children }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      {Icon ? <Icon size={18} style={{ color: '#16A34A' }} aria-hidden="true" /> : null}
+      <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>{children}</h2>
+    </div>
+  )
+}
 
 export default function Docs() {
+  const [activeId, setActiveId] = useState('comecar')
+
+  useEffect(() => {
+    const ids = NAV.map((item) => item.href.slice(1))
+    const elements = ids
+      .map((id) => document.getElementById(id))
+      .filter(Boolean)
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
+        if (visible[0]?.target?.id) setActiveId(visible[0].target.id)
+      },
+      { rootMargin: '-80px 0px -55% 0px', threshold: [0, 0.15, 0.4] }
+    )
+
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12">
 
-        {/* Header */}
-        <div className="mb-10">
+        <div className="mb-8 md:mb-10">
           <div className="flex items-center gap-2 mb-3">
-            <BookOpen size={20} style={{ color: '#16A34A' }} />
-            <span className="text-sm font-medium text-green-700">Documentation</span>
+            <BookOpen size={20} style={{ color: '#16A34A' }} aria-hidden="true" />
+            <span className="text-sm font-medium text-green-700">Documentação</span>
           </div>
           <h1 className="text-3xl font-bold" style={{ color: '#0F172A' }}>
-            API Reference
+            Referência da API Aberta
           </h1>
-          <p className="text-slate-500 mt-2 text-lg">
-            Everything you need to start building with the API Aberta.
+          <p className="text-slate-500 mt-2 text-lg max-w-3xl">
+            As 18 APIs do gateway{' '}
+            <a
+              href="https://api.apiaberta.pt"
+              className="font-medium no-underline hover:underline"
+              style={{ color: '#15803D' }}
+            >
+              api.apiaberta.pt
+            </a>
+            , com endpoints, parâmetros e respostas obtidas na API pública em {CAPTURED_AT}.
           </p>
         </div>
 
-        {/* TOC */}
-        <nav
-          className="rounded-2xl p-5 mb-10"
-          style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}
-        >
-          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#16A34A' }}>
-            On this page
-          </p>
-          <ol className="list-none p-0 m-0 flex flex-col gap-1">
-            {[
-              ['#getting-started', 'Getting started'],
-              ['#authentication', 'Authentication'],
-              ['#rate-limits', 'Rate limits'],
-              ['#examples', 'Example requests'],
-              ['#errors', 'Error codes'],
-              ['#nif', 'NIF Validator'],
-              ['#prr', 'PRR / PT2030'],
-              ['#nasafirms', 'NASA FIRMS'],
-              ['#dre', 'DRE Legislation'],
-              ['#carris', 'Carris Metropolitana'],
-              ['#gtfs', 'Horários (GTFS)'],
-              ['#parlamento', 'Parlamento'],
-              ['#sns', 'SNS Transparência'],
-              ['#ipma-seismic', 'Sismos (IPMA)'],
-            ].map(([href, label]) => (
-              <li key={href}>
-                <a
-                  href={href}
-                  className="text-sm font-medium no-underline hover:underline"
-                  style={{ color: '#15803D' }}
-                >
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
-        <div className="flex flex-col gap-12">
-
-          {/* Getting started */}
-          <section id="getting-started">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Getting started</h2>
-            </div>
-            <div className="prose-like flex flex-col gap-4 text-slate-600 text-sm leading-relaxed">
-              <p>
-                The API Aberta provides free, open access to Portuguese public data. To use it:
-              </p>
-              <ol className="list-decimal list-inside flex flex-col gap-2 pl-1">
-                <li>
-                  <a href="/" className="font-medium no-underline hover:underline" style={{ color: '#16A34A' }}>
-                    Register for a free account
-                  </a>{' '}
-                  — takes 10 seconds, no credit card needed.
+        <div className="lg:hidden mb-8">
+          <nav
+            aria-label="Índice desta página"
+            className="rounded-2xl p-4"
+            style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#16A34A' }}>
+              Nesta página
+            </p>
+            <ol className="list-none p-0 m-0 columns-1 sm:columns-2 gap-x-6">
+              {NAV.map((item) => (
+                <li key={item.href} className="break-inside-avoid mb-1">
+                  <a
+                    href={item.href}
+                    className="text-sm font-medium no-underline hover:underline"
+                    style={{ color: '#15803D' }}
+                  >
+                    {item.label}
+                  </a>
                 </li>
-                <li>Copy your API key from the dashboard.</li>
-                <li>Include it as an <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> header in your requests.</li>
-              </ol>
-              <p>
-                The base URL for all endpoints is:{' '}
-                <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">https://api.apiaberta.pt</code>
-              </p>
-            </div>
-          </section>
+              ))}
+            </ol>
+          </nav>
+        </div>
 
-          {/* Authentication */}
-          <section id="authentication">
-            <div className="flex items-center gap-2 mb-4">
-              <Shield size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Authentication</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              All API requests must include your API key in the <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> HTTP header.
-              API keys start with <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">ak_</code>.
-            </p>
-            <CodeBlock code={CURL_AUTH} language="bash" label="cURL" />
-            <p className="text-sm text-slate-500 mt-3">
-              Requests without a valid API key will receive a <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">401 Unauthorized</code> response.
-            </p>
-            <div className="mt-4">
-              <CodeBlock code={ERROR_RESPONSE} language="json" label="401 Response" />
-            </div>
-          </section>
+        <div className="flex gap-10 items-start">
+          <nav
+            aria-label="Índice da documentação"
+            className="hidden lg:block w-56 shrink-0 sticky top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-2"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3 text-slate-400">Índice</p>
+            <ol className="list-none p-0 m-0 flex flex-col gap-0.5">
+              {NAV.map((item) => {
+                const id = item.href.slice(1)
+                const current = activeId === id
+                return (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      aria-current={current ? 'location' : undefined}
+                      className={`block text-sm no-underline rounded-lg px-3 py-1.5 ${current ? '' : 'hover:bg-slate-100'}`}
+                      style={{
+                        color: current ? '#15803D' : '#475569',
+                        fontWeight: current ? 600 : 500,
+                        backgroundColor: current ? '#F0FDF4' : 'transparent',
+                        boxShadow: current ? 'inset 2px 0 0 0 #16A34A' : 'none',
+                      }}
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                )
+              })}
+            </ol>
+          </nav>
 
-          {/* Rate limits */}
-          <section id="rate-limits">
-            <h2 className="text-xl font-bold mb-4" style={{ color: '#0F172A' }}>Rate limits</h2>
-            <p className="text-slate-600 text-sm leading-relaxed mb-6">
-              Rate limits are applied per API key. When you exceed a limit, you'll receive a{' '}
-              <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">429 Too Many Requests</code> response.
-            </p>
+          <div className="flex-1 min-w-0 flex flex-col gap-14">
 
-            {/* Table */}
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Plan</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Requests / min</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Requests / day</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Price</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3">
-                      <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}
-                      >
-                        Free
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">60</td>
-                    <td className="px-5 py-3 text-slate-600">1,000</td>
-                    <td className="px-5 py-3 text-slate-600">Free forever</td>
-                  </tr>
-                  <tr>
-                    <td className="px-5 py-3">
-                      <span
-                        className="text-xs font-medium px-2 py-0.5 rounded-full"
-                        style={{ backgroundColor: '#FFFBEB', color: '#B45309' }}
-                      >
-                        Pro
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-slate-600">600</td>
-                    <td className="px-5 py-3 text-slate-600">100,000</td>
-                    <td className="px-5 py-3 text-slate-600">Coming soon</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p className="text-sm text-slate-500 mb-4">
-              Rate limit headers are returned with every response:
-            </p>
-            <CodeBlock code={RATE_LIMIT_RESPONSE} language="http" label="429 Too Many Requests" />
-          </section>
-
-          {/* Examples */}
-          <section id="examples">
-            <h2 className="text-xl font-bold mb-4" style={{ color: '#0F172A' }}>Example requests</h2>
-
-            <div className="flex flex-col gap-5">
-              <div>
-                <p className="text-sm font-medium text-slate-700 mb-2">cURL</p>
-                <CodeBlock code={CURL_AUTH} language="bash" label="cURL" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-slate-700 mb-2">JavaScript (fetch)</p>
+            <section id="comecar" className="scroll-mt-24">
+              <SectionHeading icon={Zap}>Começar</SectionHeading>
+              <div className="flex flex-col gap-4 text-slate-600 text-sm leading-relaxed">
+                <p>
+                  A API Aberta agrega dados públicos portugueses num único host REST.
+                  A URL base é{' '}
+                  <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">https://api.apiaberta.pt</code>.
+                  A lista viva dos 18 serviços está em{' '}
+                  <a
+                    href="https://api.apiaberta.pt/v1/status"
+                    className="font-medium no-underline hover:underline"
+                    style={{ color: '#15803D' }}
+                  >
+                    GET /v1/status
+                  </a>
+                  .
+                </p>
+                <ol className="list-decimal list-inside flex flex-col gap-2 pl-1">
+                  <li>
+                    Os endpoints de dados são públicos: pode chamá-los sem chave.
+                  </li>
+                  <li>
+                    <a href="/" className="font-medium no-underline hover:underline" style={{ color: '#16A34A' }}>
+                      Crie uma conta
+                    </a>{' '}
+                    se quiser uma chave <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">ak_…</code> e o limite de 300 pedidos/min.
+                  </li>
+                  <li>
+                    Envie a chave no cabeçalho <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code>.
+                  </li>
+                </ol>
                 <CodeBlock code={JS_FETCH} language="javascript" label="JavaScript" />
               </div>
-            </div>
-          </section>
+            </section>
 
-
-          {/* NIF Validator */}
-          <section id="nif">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>NIF Validator</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Valida NIFs portugueses usando o algoritmo MOD 11. Retorna o tipo de entidade (pessoa singular, coletiva, etc.).
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nif/validate/:nif</td>
-                    <td className="px-5 py-3 text-slate-600">Valida um NIF português</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <p className="text-sm font-medium text-slate-700 mb-2">Valid NIF (empresa)</p>
-            <CodeBlock code={NIF_VALID} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={NIF_VALID_RESP} language="json" label="200 OK" />
-            </div>
-
-            <p className="text-sm font-medium text-slate-700 mb-2 mt-6">Invalid NIF (checksum)</p>
-            <CodeBlock code={NIF_INVALID} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={NIF_INVALID_RESP} language="json" label="200 OK" />
-            </div>
-
-            <div className="mt-6 rounded-xl border border-slate-200 p-4 text-sm text-slate-600">
-              <p className="font-semibold text-slate-700 mb-1">Parâmetros</p>
-              <ul className="list-disc list-inside flex flex-col gap-1">
-                <li><code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">nif</code> (path) — NIF a validar, 9 dígitos</li>
-              </ul>
-              <p className="font-semibold text-slate-700 mt-3 mb-1">Tipos de NIF</p>
-              <ul className="list-disc list-inside flex flex-col gap-1 text-xs">
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">1</code> — Pessoa singular (residente)</li>
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">2</code> — Pessoa singular (não residente)</li>
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">5</code> — Pessoa coletiva (empresa)</li>
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">3</code> — Entidade pública</li>
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">6</code> — Entidade singular não residente</li>
-                <li><code className="bg-slate-100 px-1 py-0.5 rounded">7/8/9</code> — Caso especial / Forças armadas</li>
-              </ul>
-            </div>
-          </section>
-
-          {/* PRR / PT2030 */}
-          <section id="prr">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>PRR / PT2030</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Fundos europeus do Plano de Recuperação e Resiliência (PRR) e PT2030. Dados agregados de transparencia.gov.pt e dados.gov.pt.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/prr/projects</td>
-                    <td className="px-5 py-3 text-slate-600">Lista de projetos PRR/PT2030</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/prr/projects/:id</td>
-                    <td className="px-5 py-3 text-slate-600">Detalhes de um projeto</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  https://api.apiaberta.pt/v1/prr/projects?limit=3`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "data": [\n    {\n      "id": "C01",\n      "name": "Cuidados de saude primarios",\n      "section": "investment",\n      "component": "C01 - Housing First",\n      "total": 61379442\n    }\n  ],\n  "total": 61,\n  "source": "https://transparencia.gov.pt"\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* NASA FIRMS */}
-          <section id="nasafirms">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>NASA FIRMS</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Deteção de incêndios via satélite pelos sensores VIIRS e MODIS. Hotspots ativos com coordenadas, luminosidade e data/hora de aquisição.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nasafirms/hotspots</td>
-                    <td className="px-5 py-3 text-slate-600">Hotspots de fogo detectados</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/nasafirms/stats</td>
-                    <td className="px-5 py-3 text-slate-600">Estatísticas agregadas</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  https://api.apiaberta.pt/v1/nasafirms/hotspots?satellite=VIIRS&limit=2`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "data": [\n    {\n      "latitude": 37.8856,\n      "longitude": -7.8523,\n      "brightness": 310.2,\n      "satellite": "VIIRS",\n      "acq_date": "2026-04-09",\n      "acq_time": "0342",\n      "frp": 5.6,\n      "confidence": "nominal"\n    }\n  ],\n  "meta": { "source": "NASA FIRMS", "count": 12 }\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* DRE Legislation */}
-          <section id="dre">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>DRE Legislation</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Legislação publicada no Diário da República. Permite procurar documentos por série, ano e termo de pesquisa.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/dre/legislation</td>
-                    <td className="px-5 py-3 text-slate-600">Lista de legislação recente</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">/v1/dre/search?q=termo</td>
-                    <td className="px-5 py-3 text-slate-600">Pesquisa por termo</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/dre/search?q=prote%C3%A7%C3%A3o+de+dados"`} language="bash" label="cURL" />
-          </section>
-
-          {/* Carris Metropolitana */}
-          <section id="carris">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Carris Metropolitana</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Posições de veículos em tempo real (GTFS-RT), chegadas previstas por paragem, alertas de serviço, linhas e paragens da Carris Metropolitana.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/vehicles"}</td>
-                    <td className="px-5 py-3 text-slate-600">Veículos em circulação (tempo real)</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/stops/{id}/arrivals"}</td>
-                    <td className="px-5 py-3 text-slate-600">Próximas chegadas a uma paragem</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/alerts"}</td>
-                    <td className="px-5 py-3 text-slate-600">Alertas de serviço ativos</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/lines"}</td>
-                    <td className="px-5 py-3 text-slate-600">Linhas</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/carris/stops"}</td>
-                    <td className="px-5 py-3 text-slate-600">Paragens</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/carris/vehicles?limit=1"`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "count": 1,\n  "updated_at": "2026-10-28T06:08:00.463Z",\n  "stale": false,\n  "data": [\n    {\n      "id": "[YA15B]2418",\n      "line_id": "3715",\n      "route_id": "[YA15B]3715_0",\n      "pattern_id": "[PL3CL][YA15B]3715_0_2",\n      "trip_id": "[PL3CL][YA15B]3715_0_2_0600_0629_0_ESC_DU",\n      "stop_id": "140639",\n      "lat": 38.631508,\n      "lon": -9.149358,\n      "bearing": 339,\n      "current_status": "STOPPED_AT",\n      "occupancy_status": "NO_DATA_AVAILABLE",\n      "timestamp": "2026-10-28T06:07:48.000Z"\n    }\n  ]\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* Horários (GTFS) */}
-          <section id="gtfs">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Horários (GTFS)</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Horários planeados de transportes públicos (Carris Metropolitana, Metro de Lisboa, CP, Fertagus, Metro do Porto, STCP), importados diariamente dos feeds GTFS oficiais.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/feeds"}</td>
-                    <td className="px-5 py-3 text-slate-600">Feeds disponíveis e validade</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/stops?near=lat,lon"}</td>
-                    <td className="px-5 py-3 text-slate-600">Paragens perto de um ponto</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/stops/{feed}/{stop}/departures"}</td>
-                    <td className="px-5 py-3 text-slate-600">Próximas partidas de uma paragem</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/departures/near?lat=&lon=&radius="}</td>
-                    <td className="px-5 py-3 text-slate-600">Próximas partidas perto de um ponto</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/routes"}</td>
-                    <td className="px-5 py-3 text-slate-600">Linhas/rotas</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/gtfs/changes"}</td>
-                    <td className="px-5 py-3 text-slate-600">Alterações detetadas nos feeds</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/gtfs/stops/metro-lisboa/AE/departures?limit=2"`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "feed_id": "metro-lisboa",\n  "stop_id": "AE",\n  "date": "2026-10-28",\n  "feed_expired": false,\n  "data": [\n    {\n      "time": "06:38",\n      "ts": "2026-10-28T06:38:42.000Z",\n      "route_id": "C",\n      "route_short_name": "Vd",\n      "headsign": "Cais Do Sodré",\n      "trip_id": "I2_21092026_C_C39_CS_I2-tTE-CS_18_21.C1"\n    },\n    {\n      "time": "06:40",\n      "ts": "2026-10-28T06:40:36.000Z",\n      "route_id": "C",\n      "route_short_name": "Vd",\n      "headsign": "Telheiras",\n      "trip_id": "I2_21092026_C_C39_CS_I2-CS-tTE_19_25.C1"\n    }\n  ]\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* Parlamento */}
-          <section id="parlamento">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Parlamento</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Atividade da Assembleia da República: iniciativas legislativas, votações com sentido de voto por grupo parlamentar, deputados e petições.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/iniciativas"}</td>
-                    <td className="px-5 py-3 text-slate-600">Iniciativas legislativas</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/votacoes"}</td>
-                    <td className="px-5 py-3 text-slate-600">Votações e sentido de voto</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/deputados"}</td>
-                    <td className="px-5 py-3 text-slate-600">Deputados</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/parlamento/peticoes"}</td>
-                    <td className="px-5 py-3 text-slate-600">Petições</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/parlamento/votacoes?limit=1"`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "count": 1,\n  "total": 2285,\n  "data": [\n    {\n      "vot_id": "193219",\n      "data": "2026-10-21T00:00:00.000Z",\n      "resultado": "Rejeitado",\n      "unanime": false,\n      "fase": "Votação na generalidade",\n      "ini_id": "377314",\n      "ini_titulo": "Recomenda ao Governo que seja estabelecido um modelo nacional de financiamento dos corpos de bombeiros municipais e detidos por associações humanitárias de bombeiros",\n      "a_favor": [\n        "IL",\n        "L",\n        "PCP",\n        "BE",\n        "PAN",\n        "JPP"\n      ],\n      "contra": [\n        "PSD",\n        "CDS-PP"\n      ],\n      "abstencao": [\n        "CH",\n        "PS"\n      ]\n    }\n  ]\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* SNS Transparência */}
-          <section id="sns">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>SNS Transparência</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Indicadores do Portal da Transparência do SNS: urgências, triagem de Manchester, tempos de espera para cirurgia e consultas, cuidados primários e recursos humanos. Datasets: urgencias, urgencias_triagem, cirurgia_tmrg, cirurgia_tmrg_onco, consultas_hospitalares, consultas_tmrg, consultas_csp, rh.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/datasets"}</td>
-                    <td className="px-5 py-3 text-slate-600">Datasets disponíveis</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/{dataset}"}</td>
-                    <td className="px-5 py-3 text-slate-600">Registos mensais por instituição</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/{dataset}/national"}</td>
-                    <td className="px-5 py-3 text-slate-600">Série nacional agregada</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/sns/entidades"}</td>
-                    <td className="px-5 py-3 text-slate-600">Hospitais, ULS e ACES</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/sns/urgencias/national"`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "count": 163,\n  "data": [\n    {\n      "period": "2026-07",\n      "geral": 2465250,\n      "pediatrica": 601862,\n      "obstetricia": 190822,\n      "psiquiatrica": 3767,\n      "total": 3261701\n    }\n  ]\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* Sismos (IPMA) */}
-          <section id="ipma-seismic">
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={18} style={{ color: '#16A34A' }} />
-              <h2 className="text-xl font-bold m-0" style={{ color: '#0F172A' }}>Sismos (IPMA)</h2>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed mb-4">
-              Atividade sísmica registada pelo IPMA no Continente, Madeira e Açores.
-            </p>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Method</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Endpoint</th>
-                    <th className="text-left px-5 py-3 font-semibold text-slate-700">Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic"}</td>
-                    <td className="px-5 py-3 text-slate-600">Sismos recentes</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic/latest"}</td>
-                    <td className="px-5 py-3 text-slate-600">Último sismo por região</td>
-                  </tr>
-                  <tr className="border-b border-slate-100">
-                    <td className="px-5 py-3"><span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}>GET</span></td>
-                    <td className="px-5 py-3 text-slate-600 font-mono text-xs">{"/v1/ipma/seismic/{id}"}</td>
-                    <td className="px-5 py-3 text-slate-600">Detalhe de um sismo</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <CodeBlock code={`curl -H "X-API-Key: ak_your_key_here" \\\n  "https://api.apiaberta.pt/v1/ipma/seismic?limit=1"`} language="bash" label="cURL" />
-            <div className="mt-3">
-              <CodeBlock code={`{\n  "count": 1,\n  "total": 411,\n  "data": [\n    {\n      "id": "ad90cacee5ddfde335f9b2a3e9ce89e1f6639f27",\n      "time": "2026-10-28T04:30:18.000Z",\n      "lat": 37.338,\n      "lon": -1.52,\n      "depth_km": 34,\n      "magnitude": 2.5,\n      "mag_type": "L",\n      "intensity": null,\n      "sensed": null,\n      "region": "continente-madeira",\n      "obs_region": "SE Lorca (ESP)",\n      "map_url": null,\n      "shakemap_url": null\n    }\n  ]\n}`} language="json" label="200 OK" />
-            </div>
-          </section>
-
-          {/* Full docs CTA */}
-          <div
-            className="rounded-2xl p-6 flex items-center gap-4"
-            style={{ backgroundColor: '#0F172A', border: '1px solid #1E293B' }}
-          >
-            <div className="flex-1">
-              <h3 className="font-semibold text-white mb-1">Full API Reference</h3>
-              <p className="text-sm" style={{ color: '#94A3B8' }}>
-                OpenAPI spec, detailed endpoint docs, and more examples on GitHub.
+            <section id="autenticacao" className="scroll-mt-24">
+              <SectionHeading icon={Shield}>Autenticação</SectionHeading>
+              <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                A chave é opcional nos 18 prefixos de dados. Sem{' '}
+                <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> o pedido
+                conta para o limite por IP. Com chave, conta para o limite da chave.
+                Rotas de conta, administração e webhooks continuam a exigir JWT ou chave.
               </p>
-            </div>
-            <a
-              href="https://github.com/apiaberta/apiaberta"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold no-underline flex-shrink-0 transition-opacity hover:opacity-90"
-              style={{ backgroundColor: '#16A34A', color: 'white' }}
-            >
-              View on GitHub
-              <ExternalLink size={14} />
-            </a>
-          </div>
+              <CodeBlock code={CURL_OPTIONAL_KEY} language="bash" label="cURL" />
+            </section>
 
+            <section id="limites" className="scroll-mt-24">
+              <SectionHeading>Limites de pedidos</SectionHeading>
+              <p className="text-slate-600 text-sm leading-relaxed mb-6">
+                O gateway aplica um limite global de 1 minuto, por IP se não houver chave e por chave se o cabeçalho existir.
+                Não há outros escalões publicados neste momento.
+              </p>
+              <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                      <th className="text-left px-5 py-3 font-semibold text-slate-700">Identidade</th>
+                      <th className="text-left px-5 py-3 font-semibold text-slate-700">Pedidos / min</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-5 py-3 text-slate-700">Sem chave (por IP)</td>
+                      <td className="px-5 py-3 text-slate-600">30</td>
+                    </tr>
+                    <tr>
+                      <td className="px-5 py-3 text-slate-700">Com X-API-Key</td>
+                      <td className="px-5 py-3 text-slate-600">300</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-sm text-slate-500 mb-3">
+                Cada resposta inclui cabeçalhos de quota (valores observados sem chave):
+              </p>
+              <CodeBlock code={RATE_LIMIT_HEADERS} language="http" label="Cabeçalhos" />
+              <p className="text-sm text-slate-500 mb-3 mt-5">
+                Acima do limite o gateway responde 429:
+              </p>
+              <CodeBlock code={RATE_LIMIT_429} language="json" label="429 Too Many Requests" />
+            </section>
+
+            <section id="erros" className="scroll-mt-24">
+              <SectionHeading>Erros</SectionHeading>
+              <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                      <th className="text-left px-5 py-3 font-semibold text-slate-700">Código</th>
+                      <th className="text-left px-5 py-3 font-semibold text-slate-700">Quando</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-5 py-3 font-mono text-xs">400</td>
+                      <td className="px-5 py-3 text-slate-600">Parâmetro inválido ou em falta (ex.: pesquisa DRE sem q).</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-5 py-3 font-mono text-xs">404</td>
+                      <td className="px-5 py-3 text-slate-600">Recurso inexistente (sismo, paragem, iniciativa, rota).</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-5 py-3 font-mono text-xs">429</td>
+                      <td className="px-5 py-3 text-slate-600">Limite de 30/min (IP) ou 300/min (chave) excedido.</td>
+                    </tr>
+                    <tr>
+                      <td className="px-5 py-3 font-mono text-xs">502</td>
+                      <td className="px-5 py-3 text-slate-600">Serviço a montante indisponível (observado em /v1/anpc/hotspots).</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {APIS.map((api) => (
+              <section key={api.id} id={api.id} className="scroll-mt-24">
+                <SectionHeading icon={Database}>{api.title}</SectionHeading>
+                <ApiBody api={api} />
+                {api.extraSections?.map((extra) => (
+                  <div key={extra.id} id={extra.id} className="scroll-mt-24 mt-10">
+                    <h3 className="text-lg font-bold mb-3" style={{ color: '#0F172A' }}>{extra.title}</h3>
+                    <ApiBody api={extra} />
+                  </div>
+                ))}
+              </section>
+            ))}
+
+            <div
+              className="rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center gap-4"
+              style={{ backgroundColor: '#0F172A', border: '1px solid #1E293B' }}
+            >
+              <div className="flex-1">
+                <h3 className="font-semibold text-white mb-1">Código-fonte dos connectors</h3>
+                <p className="text-sm m-0" style={{ color: '#94A3B8' }}>
+                  Rotas e parâmetros desta página vêm dos repositórios em github.com/apiaberta. Respostas capturadas em {CAPTURED_AT}.
+                </p>
+              </div>
+              <a
+                href="https://github.com/apiaberta"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold no-underline flex-shrink-0 transition-opacity hover:opacity-90"
+                style={{ backgroundColor: '#16A34A', color: 'white' }}
+              >
+                Ver no GitHub
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
