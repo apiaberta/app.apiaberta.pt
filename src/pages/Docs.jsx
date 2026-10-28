@@ -260,7 +260,7 @@ export default function Docs() {
             <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: '#16A34A' }}>
               Nesta página
             </p>
-            <ol className="list-none p-0 m-0 columns-1 sm:columns-2 gap-x-6">
+            <ol className="list-none p-0 m-0 columns-2 gap-x-4">
               {NAV.map((item) => (
                 <li key={item.href} className="break-inside-avoid mb-1">
                   <a
