@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { MOCK_EVENTS, MANY_EVENTS } from './fixtures'
+import { MOCK_EVENTS, MOCK_REFS, MANY_EVENTS } from './fixtures'
 import {
   buildWebhookPayload,
   compactFilters,
   filterEvents,
   formatFilterSummary,
+  geoPrecisionLabel,
   groupEventsByService,
   listActiveFilterSummaries,
   normalizeCatalog,
+  normalizeStoredFilters,
+  parseCatalog,
   shouldShowEventSearch,
 } from './helpers'
 
@@ -16,27 +19,65 @@ describe('compactFilters', () => {
     const filters = compactFilters(
       ['base.contract.new', 'ipma.warning.new'],
       {
-        'base.contract.new': { local: '  Fundão  ', value: '' },
-        'ipma.warning.new': { level: '   ', region: '' },
-        'ev.prices.updated': { price_eur_mwh: '80' },
+        'base.contract.new': { municipality: '  0504  ', valor_min: '' },
+        'ipma.warning.new': { min_level: '   ', region: '' },
+        'ev.prices.updated': { min_price_eur_mwh: '80' },
       },
       MOCK_EVENTS
     )
 
     expect(filters).toEqual({
-      'base.contract.new': { local: 'Fundão' },
+      'base.contract.new': { municipality: '0504' },
     })
   })
 
   it('coerces number filters to numbers', () => {
     const filters = compactFilters(
       ['base.contract.new'],
-      { 'base.contract.new': { local: 'Fundão', value: '10000' } },
+      { 'base.contract.new': { municipality: '0504', valor_min: '10000' } },
       MOCK_EVENTS
     )
 
     expect(filters).toEqual({
-      'base.contract.new': { local: 'Fundão', value: 10000 },
+      'base.contract.new': { municipality: '0504', valor_min: 10000 },
+    })
+  })
+
+  it('writes municipality and drops legacy local/concelho keys', () => {
+    const filters = compactFilters(
+      ['base.contract.new'],
+      { 'base.contract.new': { local: '0504', concelho: '1106' } },
+      MOCK_EVENTS
+    )
+
+    expect(filters).toEqual({
+      'base.contract.new': { municipality: ['0504', '1106'] },
+    })
+    expect(filters['base.contract.new'].local).toBeUndefined()
+    expect(filters['base.contract.new'].concelho).toBeUndefined()
+  })
+
+  it('keeps a single multi value as a scalar', () => {
+    const filters = compactFilters(
+      ['dre.diploma.new'],
+      { 'dre.diploma.new': { series: ['I'] } },
+      MOCK_EVENTS
+    )
+    expect(filters).toEqual({
+      'dre.diploma.new': { series: 'I' },
+    })
+  })
+})
+
+describe('normalizeStoredFilters', () => {
+  it('maps local and concelho to municipality when editing old webhooks', () => {
+    expect(
+      normalizeStoredFilters(
+        { 'base.contract.new': { local: 'Fundão', valor_min: 5000 } },
+        MOCK_EVENTS
+      )
+    ).toEqual({
+      'base.contract.new': { municipality: 'Fundão', valor_min: 5000 },
     })
   })
 })
@@ -74,8 +115,8 @@ describe('buildWebhookPayload', () => {
       url: 'https://api.meusite.pt/hook',
       events: ['base.contract.new', 'ipma.warning.new'],
       filterValues: {
-        'base.contract.new': { local: 'Fundão', value: '5000' },
-        'ipma.warning.new': { level: 'red' },
+        'base.contract.new': { municipality: '0504', valor_min: '5000' },
+        'ipma.warning.new': { min_level: 'orange' },
       },
       catalog: MOCK_EVENTS,
     })
@@ -84,41 +125,42 @@ describe('buildWebhookPayload', () => {
       url: 'https://api.meusite.pt/hook',
       events: ['base.contract.new', 'ipma.warning.new'],
       filters: {
-        'base.contract.new': { local: 'Fundão', value: 5000 },
-        'ipma.warning.new': { level: 'red' },
+        'base.contract.new': { municipality: '0504', valor_min: 5000 },
+        'ipma.warning.new': { min_level: 'orange' },
       },
     })
   })
 })
 
 describe('formatFilterSummary', () => {
-  it('builds a readable PT-PT summary', () => {
+  it('shows the municipality name from refs, not the INE code', () => {
     const event = MOCK_EVENTS.find(e => e.name === 'base.contract.new')
-    const filter = event.filters.find(f => f.key === 'local')
-    expect(formatFilterSummary(event, filter, 'Fundão')).toBe(
-      'Contratos públicos · local contém Fundão'
+    const filter = event.filters.find(f => f.key === 'municipality')
+    expect(formatFilterSummary(event, filter, '0504', MOCK_REFS)).toBe(
+      'Novo contrato público · concelho é Fundão'
     )
   })
 
   it('uses enum option labels', () => {
     const event = MOCK_EVENTS.find(e => e.name === 'ipma.warning.new')
-    const filter = event.filters.find(f => f.key === 'level')
+    const filter = event.filters.find(f => f.key === 'min_level')
     expect(formatFilterSummary(event, filter, 'red')).toBe(
-      'Aviso meteorológico · nível é Vermelho'
+      'Novo aviso meteorológico · nível mínimo ≥ Vermelho'
     )
   })
 })
 
 describe('listActiveFilterSummaries', () => {
-  it('lists active filters on an existing webhook', () => {
+  it('lists active filters and remaps legacy local keys', () => {
     const lines = listActiveFilterSummaries(
       {
         events: ['base.contract.new'],
-        filters: { 'base.contract.new': { local: 'Fundão' } },
+        filters: { 'base.contract.new': { local: '0504' } },
       },
-      MOCK_EVENTS
+      MOCK_EVENTS,
+      MOCK_REFS
     )
-    expect(lines).toEqual(['Contratos públicos · local contém Fundão'])
+    expect(lines).toEqual(['Novo contrato público · concelho é Fundão'])
   })
 })
 
@@ -131,6 +173,7 @@ describe('groupEventsByService', () => {
       '/v1/anpc',
       '/v1/base',
       '/v1/ev',
+      '/v1/dre',
     ])
     expect(groups.find(g => g.service === '/v1/base').title).toBe('Contratos públicos (BASE)')
   })
@@ -143,7 +186,7 @@ describe('event search', () => {
   })
 
   it('filters by label, name and connector', () => {
-    const hits = filterEvents(MOCK_EVENTS, 'fundão')
+    const hits = filterEvents(MOCK_EVENTS, 'contrato')
     expect(hits.map(e => e.name)).toEqual(['base.contract.new'])
   })
 })
@@ -152,5 +195,20 @@ describe('normalizeCatalog', () => {
   it('rejects a payload that is not the events contract', () => {
     expect(() => normalizeCatalog({ data: MOCK_EVENTS })).toThrow(/inválida/)
     expect(normalizeCatalog({ events: MOCK_EVENTS })).toEqual(MOCK_EVENTS)
+  })
+})
+
+describe('parseCatalog', () => {
+  it('keeps geo refs for comboboxes', () => {
+    const parsed = parseCatalog({ events: MOCK_EVENTS, refs: MOCK_REFS })
+    expect(parsed.events).toEqual(MOCK_EVENTS)
+    expect(parsed.refs.municipalities).toHaveLength(MOCK_REFS.municipalities.length)
+  })
+})
+
+describe('geoPrecisionLabel', () => {
+  it('labels country-wide events', () => {
+    expect(geoPrecisionLabel('none')).toBe('Nacional — sem filtro de localização')
+    expect(geoPrecisionLabel('district')).toBeNull()
   })
 })

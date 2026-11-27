@@ -18,7 +18,7 @@ import WebhookForm from '../webhooks/WebhookForm'
 import {
   eventLabel,
   listActiveFilterSummaries,
-  normalizeCatalog,
+  parseCatalog,
 } from '../webhooks/helpers'
 
 function StatusBadge({ status }) {
@@ -40,7 +40,7 @@ function StatusBadge({ status }) {
   )
 }
 
-function WebhookCard({ wh, catalog, onDelete, onUpdate, onEdit }) {
+function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit }) {
   const [deliveries, setDeliveries] = useState(null)
   const [expanded, setExpanded]     = useState(false)
   const [deleting, setDeleting]     = useState(false)
@@ -48,7 +48,7 @@ function WebhookCard({ wh, catalog, onDelete, onUpdate, onEdit }) {
   const [toggling, setToggling]     = useState(false)
   const [testResult, setTestResult] = useState(null)
   const { token } = useAuth()
-  const summaries = listActiveFilterSummaries(wh, catalog)
+  const summaries = listActiveFilterSummaries(wh, catalog, refs)
 
   function toggleDeliveries() {
     if (!expanded && !deliveries) {
@@ -251,6 +251,7 @@ export default function Webhooks() {
   const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [catalog, setCatalog] = useState([])
+  const [refs, setRefs] = useState({ municipalities: [], districts: [] })
   const [catalogStatus, setCatalogStatus] = useState('loading')
   const [catalogError, setCatalogError] = useState(null)
 
@@ -259,21 +260,23 @@ export default function Webhooks() {
       || 'Não foi possível carregar os eventos disponíveis. Tenta outra vez — a lista antiga não é usada.'
   }
 
-  function applyCatalog(events) {
-    setCatalog(events)
+  function applyCatalog(parsed) {
+    setCatalog(parsed.events)
+    setRefs(parsed.refs)
     setCatalogStatus('ok')
     setCatalogError(null)
   }
 
   function applyCatalogError(err) {
     setCatalog([])
+    setRefs({ municipalities: [], districts: [] })
     setCatalogStatus('error')
     setCatalogError(catalogErrorMessage(err))
   }
 
   function fetchCatalog() {
     return api.get('/v1/webhooks/events', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => normalizeCatalog(r.data))
+      .then(r => parseCatalog(r.data))
   }
 
   function retryCatalog() {
@@ -290,17 +293,17 @@ export default function Webhooks() {
       .finally(() => setLoading(false))
     api.get('/v1/webhooks/events', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
-        setCatalog(normalizeCatalog(r.data))
+        const parsed = parseCatalog(r.data)
+        setCatalog(parsed.events)
+        setRefs(parsed.refs)
         setCatalogStatus('ok')
         setCatalogError(null)
       })
       .catch(err => {
         setCatalog([])
+        setRefs({ municipalities: [], districts: [] })
         setCatalogStatus('error')
-        setCatalogError(
-          err.response?.data?.message
-          || 'Não foi possível carregar os eventos disponíveis. Tenta outra vez — a lista antiga não é usada.'
-        )
+        setCatalogError(catalogErrorMessage(err))
       })
   }, [token, navigate])
 
@@ -376,6 +379,7 @@ export default function Webhooks() {
             <WebhookForm
               mode="create"
               catalog={catalog}
+              refs={refs}
               catalogStatus={catalogStatus}
               catalogError={catalogError}
               onRetryCatalog={retryCatalog}
@@ -411,6 +415,7 @@ export default function Webhooks() {
                   mode="edit"
                   webhook={wh}
                   catalog={catalog}
+                  refs={refs}
                   catalogStatus={catalogStatus}
                   catalogError={catalogError}
                   onRetryCatalog={retryCatalog}
@@ -422,6 +427,7 @@ export default function Webhooks() {
                   key={wh.id}
                   wh={wh}
                   catalog={catalog}
+                  refs={refs}
                   onDelete={handleDeleted}
                   onUpdate={updated => setWebhooks(prev => prev.map(w => (w.id === updated.id ? { ...w, ...updated } : w)))}
                   onEdit={() => openEdit(wh.id)}
@@ -439,7 +445,7 @@ export default function Webhooks() {
             Quando um evento ocorre, enviamos um pedido HTTPS para o teu URL com um JSON assinado via HMAC-SHA256.
             Verifica a assinatura no cabeçalho <code className="bg-blue-100 px-1 rounded">X-ApiAberta-Signature</code>.
             Se a entrega falhar, tentamos mais 2 vezes (30s e 120s de intervalo).
-            Podes limitar as entregas com filtros por evento — por exemplo, só contratos cujo local contém «Fundão».
+            Podes limitar as entregas com filtros por evento — por exemplo, só contratos do concelho do Fundão (código INE 0504).
             Os filtros vazios são ignorados; só os valores preenchidos entram na subscrição.
             Usa o botão <strong>Testar</strong> para verificar que o teu URL está a receber corretamente.
           </div>
