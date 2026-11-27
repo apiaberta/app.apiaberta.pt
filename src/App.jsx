@@ -11,8 +11,6 @@ import Admin from './pages/Admin'
 import Webhooks from './pages/Webhooks'
 import Playground from './pages/Playground'
 import Settings from './pages/Settings'
-import Currency from './pages/Currency'
-import NifValidator from './pages/NifValidator'
 
 export default function App() {
   return (
@@ -31,8 +29,6 @@ export default function App() {
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/explore/currency" element={<Currency />} />
-          <Route path="/explore/nif" element={<NifValidator />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
