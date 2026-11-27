@@ -3,6 +3,7 @@ import { MOCK_EVENTS, MOCK_REFS, MANY_EVENTS } from './fixtures'
 import {
   buildWebhookPayload,
   compactFilters,
+  extractWebhookSecret,
   filterEvents,
   formatFilterSummary,
   geoPrecisionLabel,
@@ -12,6 +13,7 @@ import {
   normalizeStoredFilters,
   parseCatalog,
   shouldShowEventSearch,
+  webhookRecordFromResponse,
 } from './helpers'
 
 describe('compactFilters', () => {
@@ -210,5 +212,63 @@ describe('geoPrecisionLabel', () => {
   it('labels country-wide events', () => {
     expect(geoPrecisionLabel('none')).toBe('Nacional — sem filtro de localização')
     expect(geoPrecisionLabel('district')).toBeNull()
+  })
+})
+
+describe('extractWebhookSecret', () => {
+  it('reads body.secret from the create 201 payload', () => {
+    expect(extractWebhookSecret({
+      id: 'wh_1',
+      url: 'https://api.meusite.pt/hook',
+      events: ['fuel.prices.updated'],
+      filters: {},
+      active: true,
+      createdAt: '2026-11-27T08:00:00.000Z',
+      updatedAt: '2026-11-27T08:00:00.000Z',
+      secret: 'whsec_abc123',
+      note: 'Store the secret securely',
+    })).toBe('whsec_abc123')
+  })
+
+  it('reads body.secret from the rotate 200 payload', () => {
+    expect(extractWebhookSecret({
+      id: 'wh_1',
+      secret: 'whsec_rotated',
+      note: 'Store the secret securely',
+    })).toBe('whsec_rotated')
+  })
+
+  it('does not read a nested data.secret', () => {
+    expect(extractWebhookSecret({ data: { secret: 'whsec_nested' } })).toBeNull()
+    expect(extractWebhookSecret({ webhook: { secret: 'whsec_wrapped' } })).toBeNull()
+  })
+
+  it('returns null when the secret is missing', () => {
+    expect(extractWebhookSecret({ id: 'wh_1' })).toBeNull()
+    expect(extractWebhookSecret(null)).toBeNull()
+  })
+})
+
+describe('webhookRecordFromResponse', () => {
+  it('strips secret and note so a list refresh cannot keep them', () => {
+    expect(webhookRecordFromResponse({
+      id: 'wh_1',
+      url: 'https://api.meusite.pt/hook',
+      events: ['fuel.prices.updated'],
+      filters: {},
+      active: true,
+      createdAt: '2026-11-27T08:00:00.000Z',
+      updatedAt: '2026-11-27T08:00:00.000Z',
+      secret: 'whsec_abc123',
+      note: 'Store the secret securely',
+    })).toEqual({
+      id: 'wh_1',
+      url: 'https://api.meusite.pt/hook',
+      events: ['fuel.prices.updated'],
+      filters: {},
+      active: true,
+      createdAt: '2026-11-27T08:00:00.000Z',
+      updatedAt: '2026-11-27T08:00:00.000Z',
+    })
   })
 })

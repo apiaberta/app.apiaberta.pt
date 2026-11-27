@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Webhook,
@@ -10,15 +10,19 @@ import {
   ChevronDown,
   ChevronUp,
   FlaskConical,
+  KeyRound,
   Pencil,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../api/client'
 import WebhookForm from '../webhooks/WebhookForm'
+import WebhookSecretPanel from '../webhooks/WebhookSecretPanel'
 import {
   eventLabel,
+  extractWebhookSecret,
   listActiveFilterSummaries,
   parseCatalog,
+  webhookRecordFromResponse,
 } from '../webhooks/helpers'
 
 function StatusBadge({ status }) {
@@ -40,12 +44,15 @@ function StatusBadge({ status }) {
   )
 }
 
-function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit }) {
+function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit, onRevealSecret }) {
   const [deliveries, setDeliveries] = useState(null)
   const [expanded, setExpanded]     = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [testing, setTesting]       = useState(false)
   const [toggling, setToggling]     = useState(false)
+  const [rotating, setRotating]     = useState(false)
+  const [confirmRotate, setConfirmRotate] = useState(false)
+  const [rotateError, setRotateError] = useState(null)
   const [testResult, setTestResult] = useState(null)
   const { token } = useAuth()
   const summaries = listActiveFilterSummaries(wh, catalog, refs)
@@ -103,6 +110,34 @@ function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit }) {
     } catch {
       alert('Erro ao remover webhook.')
       setDeleting(false)
+    }
+  }
+
+  async function handleRotateSecret() {
+    setRotating(true)
+    setRotateError(null)
+    try {
+      const res = await api.post(`/v1/webhooks/${wh.id}/rotate-secret`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+      const secret = extractWebhookSecret(res.data)
+      if (!secret) {
+        setRotateError('Não foi possível gerar o novo segredo.')
+        return
+      }
+      setConfirmRotate(false)
+      onRevealSecret(secret, 'rotate')
+    } catch (err) {
+      setRotateError(
+        err.response?.status === 404
+          ? 'Este webhook já não existe.'
+          : 'Não foi possível gerar o novo segredo.'
+      )
+    } finally {
+      setRotating(false)
     }
   }
 
@@ -182,6 +217,16 @@ function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit }) {
               <FlaskConical size={13} />
               {testing ? 'A testar...' : 'Testar'}
             </button>
+            {!confirmRotate && (
+              <button
+                type="button"
+                onClick={() => { setRotateError(null); setConfirmRotate(true) }}
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 transition-colors cursor-pointer border-0 bg-transparent px-2 py-1 rounded-lg hover:bg-slate-100"
+              >
+                <KeyRound size={13} />
+                Gerar novo segredo
+              </button>
+            )}
             <button
               type="button"
               onClick={onEdit}
@@ -210,6 +255,41 @@ function WebhookCard({ wh, catalog, refs, onDelete, onUpdate, onEdit }) {
             </button>
           </div>
         </div>
+
+        {confirmRotate && (
+          <div
+            className="mt-4 rounded-xl px-4 py-3"
+            style={{ backgroundColor: '#FFFBEB', border: '1px solid #FDE68A' }}
+          >
+            <p className="text-sm m-0" style={{ color: '#92400E' }}>
+              O segredo antigo deixa de funcionar imediatamente.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => { setConfirmRotate(false); setRotateError(null) }}
+                className="min-h-11 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 cursor-pointer border border-slate-200 bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleRotateSecret}
+                disabled={rotating}
+                className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold text-white cursor-pointer border-0 disabled:opacity-50"
+                style={{ backgroundColor: '#DC2626' }}
+              >
+                {rotating ? 'A gerar...' : 'Sim, gerar novo'}
+              </button>
+            </div>
+            {rotateError && (
+              <p role="alert" className="text-sm text-red-600 mt-2 mb-0">{rotateError}</p>
+            )}
+          </div>
+        )}
+        {!confirmRotate && rotateError && (
+          <p role="alert" className="text-sm text-red-600 mt-3 mb-0">{rotateError}</p>
+        )}
       </div>
 
       {expanded && (
@@ -254,6 +334,8 @@ export default function Webhooks() {
   const [refs, setRefs] = useState({ municipalities: [], districts: [] })
   const [catalogStatus, setCatalogStatus] = useState('loading')
   const [catalogError, setCatalogError] = useState(null)
+  const [revealedSecret, setRevealedSecret] = useState(null)
+  const listFetchId = useRef(0)
 
   function catalogErrorMessage(err) {
     return err.response?.data?.message
@@ -287,10 +369,20 @@ export default function Webhooks() {
 
   useEffect(() => {
     if (!token) { navigate('/', { replace: true }); return }
+    const fetchId = ++listFetchId.current
     api.get('/v1/webhooks', { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => setWebhooks(r.data.data || []))
-      .catch(() => setWebhooks([]))
-      .finally(() => setLoading(false))
+      .then(r => {
+        if (fetchId !== listFetchId.current) return
+        setWebhooks(r.data.data || [])
+      })
+      .catch(() => {
+        if (fetchId !== listFetchId.current) return
+        setWebhooks([])
+      })
+      .finally(() => {
+        if (fetchId !== listFetchId.current) return
+        setLoading(false)
+      })
     api.get('/v1/webhooks/events', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         const parsed = parseCatalog(r.data)
@@ -307,9 +399,19 @@ export default function Webhooks() {
       })
   }, [token, navigate])
 
-  function handleCreated(wh) {
-    setWebhooks(prev => [wh, ...prev])
+  function revealSecret(secret, reason) {
+    if (!secret) return
+    setRevealedSecret({ secret, reason })
+  }
+
+  function handleCreated(payload) {
+    listFetchId.current += 1
+    const secret = extractWebhookSecret(payload)
+    const webhook = webhookRecordFromResponse(payload)
+    setWebhooks(prev => [webhook, ...prev])
     setCreating(false)
+    setLoading(false)
+    revealSecret(secret, 'create')
   }
 
   function handleUpdated(wh) {
@@ -431,11 +533,20 @@ export default function Webhooks() {
                   onDelete={handleDeleted}
                   onUpdate={updated => setWebhooks(prev => prev.map(w => (w.id === updated.id ? { ...w, ...updated } : w)))}
                   onEdit={() => openEdit(wh.id)}
+                  onRevealSecret={revealSecret}
                 />
               )
             ))
           )}
         </div>
+
+        {revealedSecret && (
+          <WebhookSecretPanel
+            secret={revealedSecret.secret}
+            reason={revealedSecret.reason}
+            onDismiss={() => setRevealedSecret(null)}
+          />
+        )}
 
         <details className="mt-6 bg-blue-50 border border-blue-100 rounded-2xl p-5">
           <summary className="text-sm font-semibold text-blue-800 cursor-pointer py-2">

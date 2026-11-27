@@ -44,7 +44,15 @@ describe('WebhookForm', () => {
     patch.mockReset()
     get.mockReset()
     post.mockResolvedValue({
-      data: { id: 'wh_1', url: 'https://api.meusite.pt/hook', events: [], filters: {}, active: true },
+      data: {
+        id: 'wh_1',
+        url: 'https://api.meusite.pt/hook',
+        events: [],
+        filters: {},
+        active: true,
+        secret: 'whsec_from_create',
+        note: 'Store the secret securely — it will not be shown again.',
+      },
     })
     patch.mockResolvedValue({
       data: { id: 'wh_1', url: 'https://api.meusite.pt/hook', events: [], filters: {}, active: true },
@@ -203,5 +211,21 @@ describe('WebhookForm', () => {
   it('shows search when the catalog is large', () => {
     renderForm({ catalog: MANY_EVENTS })
     expect(screen.getByPlaceholderText('Pesquisar eventos, conectores…')).toBeInTheDocument()
+  })
+
+  it('passes the create response including the one-time secret to the parent', async () => {
+    const user = userEvent.setup()
+    const { onSubmitSuccess } = renderForm()
+
+    await user.type(screen.getByLabelText('URL de destino (HTTPS)'), 'https://api.meusite.pt/hook')
+    await user.click(screen.getByRole('checkbox', { name: /Preços de combustíveis/i }))
+    await user.click(screen.getByRole('button', { name: 'Criar webhook' }))
+
+    await waitFor(() => {
+      expect(onSubmitSuccess).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'wh_1',
+        secret: 'whsec_from_create',
+      }))
+    })
   })
 })

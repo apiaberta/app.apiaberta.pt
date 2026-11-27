@@ -265,6 +265,30 @@ export function geoPrecisionLabel(precision) {
   return null
 }
 
+function asObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null
+}
+
+/**
+ * Gateway contract (create 201 / rotate 200): signing secret is the top-level
+ * JSON field `secret` — axios `res.data.secret`. Never `data.secret`.
+ * GET list/detail never include it.
+ */
+export function extractWebhookSecret(payload) {
+  const body = asObject(payload)
+  const secret = body?.secret
+  return typeof secret === 'string' && secret.trim() ? secret.trim() : null
+}
+
+export function webhookRecordFromResponse(payload) {
+  const body = asObject(payload)
+  if (!body) return payload
+  const record = { ...body }
+  delete record.secret
+  delete record.note
+  return record
+}
+
 export function normalizeCatalog(payload) {
   const events = payload?.events
   if (!Array.isArray(events)) {
