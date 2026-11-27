@@ -11,5 +11,10 @@ export default defineConfig({
     proxy: {
       '/v1': 'http://localhost:4000'
     }
-  }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+  },
 })

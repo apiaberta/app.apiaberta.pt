@@ -1,0 +1,128 @@
+export const MOCK_EVENTS = [
+  {
+    name: 'ipma.warning.new',
+    service: '/v1/ipma',
+    label_pt: 'Aviso meteorológico',
+    description_pt: 'Novo aviso meteorológico emitido pelo IPMA',
+    description: 'Fired when IPMA issues a new meteorological warning',
+    payload_fields: ['id', 'level', 'type', 'text', 'region', 'startTime', 'endTime'],
+    filters: [
+      {
+        key: 'level',
+        label_pt: 'Nível',
+        type: 'enum',
+        match: 'equals',
+        options: [
+          { value: 'yellow', label_pt: 'Amarelo' },
+          { value: 'orange', label_pt: 'Laranja' },
+          { value: 'red', label_pt: 'Vermelho' },
+        ],
+      },
+      {
+        key: 'region',
+        label_pt: 'Região',
+        type: 'string',
+        match: 'contains_ci',
+        placeholder_pt: 'Lisboa, Porto…',
+      },
+    ],
+  },
+  {
+    name: 'fuel.prices.updated',
+    service: '/v1/fuel',
+    label_pt: 'Preços de combustível',
+    description_pt: 'Atualização diária de preços de combustível (DGEG)',
+    description: 'Fired when DGEG publishes new fuel price data',
+    payload_fields: ['date', 'diesel_avg', 'gasoline95_avg', 'lpg_avg', 'records'],
+    filters: [],
+  },
+  {
+    name: 'anpc.incident.new',
+    service: '/v1/anpc',
+    label_pt: 'Ocorrência ANPC',
+    description_pt: 'Nova ocorrência de proteção civil registada',
+    description: 'Fired when a new civil protection incident is reported',
+    payload_fields: ['id', 'type', 'location', 'district', 'status', 'reported_at'],
+    filters: [
+      {
+        key: 'district',
+        label_pt: 'Distrito',
+        type: 'string',
+        match: 'contains_ci',
+        placeholder_pt: 'Castelo Branco…',
+      },
+    ],
+  },
+  {
+    name: 'base.contract.new',
+    service: '/v1/base',
+    label_pt: 'Contratos públicos',
+    description_pt: 'Novo contrato publicado em BASE.gov.pt',
+    description: 'Fired when a new public contract is published on BASE.gov.pt',
+    payload_fields: ['id', 'description', 'contractingEntity', 'awarded', 'value', 'date', 'type'],
+    filters: [
+      {
+        key: 'local',
+        label_pt: 'Local',
+        type: 'string',
+        match: 'contains_ci',
+        placeholder_pt: 'Fundão, Castelo Branco…',
+      },
+      {
+        key: 'value',
+        label_pt: 'Valor mínimo (€)',
+        type: 'number',
+        match: 'gte',
+        placeholder_pt: '10000',
+      },
+    ],
+  },
+  {
+    name: 'ev.prices.updated',
+    service: '/v1/ev',
+    label_pt: 'Preços EV (OMIE)',
+    description_pt: 'Atualização de preço da eletricidade no mercado ibérico',
+    description: 'Fired when OMIE electricity market prices are updated',
+    payload_fields: ['period', 'price_eur_mwh', 'price_eur_kwh', 'source'],
+    filters: [
+      {
+        key: 'price_eur_mwh',
+        label_pt: 'Preço mínimo (€/MWh)',
+        type: 'number',
+        match: 'gte',
+        placeholder_pt: '50',
+      },
+    ],
+  },
+]
+
+export const MANY_EVENTS = [
+  ...MOCK_EVENTS,
+  {
+    name: 'carris.arrival.new',
+    service: '/v1/carris',
+    label_pt: 'Chegada Carris',
+    description_pt: 'Nova previsão de chegada',
+    description: 'New arrival',
+    payload_fields: ['stop'],
+    filters: [],
+  },
+  {
+    name: 'sns.wait.updated',
+    service: '/v1/sns',
+    label_pt: 'Tempos de espera SNS',
+    description_pt: 'Atualização dos tempos de espera',
+    description: 'Wait times updated',
+    payload_fields: ['hospital'],
+    filters: [],
+  },
+  {
+    name: 'dre.act.new',
+    service: '/v1/dre',
+    label_pt: 'Ato no Diário da República',
+    description_pt: 'Novo ato publicado',
+    description: 'New act',
+    payload_fields: ['id'],
+    filters: [],
+  },
+]
