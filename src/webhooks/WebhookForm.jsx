@@ -2,86 +2,25 @@ import { useMemo, useRef, useState } from 'react'
 import { Loader2, Search, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import api from '../api/client'
+import FilterField from './FilterField'
 import {
   buildWebhookPayload,
   filterEvents,
   formatFilterSummary,
+  geoPrecisionLabel,
   groupEventsByService,
+  normalizeStoredFilters,
   shouldShowEventSearch,
 } from './helpers'
 
 const inputClass =
   'w-full text-base sm:text-sm border border-slate-200 rounded-xl px-4 py-2.5 bg-white text-slate-900 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100'
 
-function FilterField({ eventName, filter, value, onChange }) {
-  const id = `filter-${eventName}-${filter.key}`
-
-  if (filter.type === 'enum') {
-    return (
-      <div>
-        <label htmlFor={id} className="text-xs font-medium text-slate-600 block mb-1">
-          {filter.label_pt || filter.key}
-        </label>
-        <select
-          id={id}
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
-          className={inputClass}
-        >
-          <option value="">Qualquer</option>
-          {(filter.options || []).map(opt => (
-            <option key={String(opt.value)} value={opt.value}>
-              {opt.label_pt || opt.value}
-            </option>
-          ))}
-        </select>
-      </div>
-    )
-  }
-
-  if (filter.type === 'number') {
-    return (
-      <div>
-        <label htmlFor={id} className="text-xs font-medium text-slate-600 block mb-1">
-          {filter.label_pt || filter.key}
-        </label>
-        <input
-          id={id}
-          type="number"
-          inputMode="decimal"
-          step="any"
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
-          placeholder={filter.placeholder_pt || ''}
-          className={inputClass}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <label htmlFor={id} className="text-xs font-medium text-slate-600 block mb-1">
-        {filter.label_pt || filter.key}
-      </label>
-      <input
-        id={id}
-        type="text"
-        value={value ?? ''}
-        onChange={e => onChange(e.target.value)}
-        placeholder={filter.placeholder_pt || ''}
-        spellCheck={false}
-        autoComplete="off"
-        className={inputClass}
-      />
-    </div>
-  )
-}
-
 export default function WebhookForm({
   mode = 'create',
   webhook,
   catalog = [],
+  refs = { municipalities: [], districts: [] },
   catalogStatus = 'ok',
   catalogError = null,
   onRetryCatalog,
@@ -92,12 +31,17 @@ export default function WebhookForm({
   const { token } = useAuth()
   const [url, setUrl] = useState(webhook?.url || '')
   const [events, setEvents] = useState(webhook?.events || [])
-  const [filterValues, setFilterValues] = useState(webhook?.filters || {})
+  const [filterValues, setFilterValues] = useState(() => normalizeStoredFilters(webhook?.filters, catalog))
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const errorRef = useRef(null)
   const urlRef = useRef(null)
+
+  const getJson = useMemo(
+    () => (path, params) => api.get(path, { params }).then(r => r.data),
+    []
+  )
 
   const showSearch = shouldShowEventSearch(catalog)
   const visibleEvents = useMemo(() => filterEvents(catalog, query), [catalog, query])
@@ -121,11 +65,11 @@ export default function WebhookForm({
       const kv = payload.filters?.[eventName] || {}
       for (const [key, value] of Object.entries(kv)) {
         const def = (event?.filters || []).find(f => f.key === key) || { key, label_pt: key, match: 'equals' }
-        lines.push(formatFilterSummary(event || { name: eventName, label_pt: eventName }, def, value))
+        lines.push(formatFilterSummary(event || { name: eventName, label_pt: eventName }, def, value, refs))
       }
     }
     return lines
-  }, [url, events, filterValues, catalog, catalogByName])
+  }, [url, events, filterValues, catalog, catalogByName, refs])
 
   function toggleEvent(name) {
     setEvents(current => {
@@ -293,6 +237,8 @@ export default function WebhookForm({
                       <div className="flex flex-col gap-2">
                         {group.events.map(ev => {
                           const selected = events.includes(ev.name)
+                          const national = geoPrecisionLabel(ev.geo_precision)
+                          const filters = ev.filters || []
                           return (
                             <div
                               key={ev.name}
@@ -312,20 +258,30 @@ export default function WebhookForm({
                                     {ev.description_pt || ev.description}
                                   </div>
                                   <code className="text-xs text-slate-400">{ev.name}</code>
+                                  {national && (
+                                    <div className="mt-1.5">
+                                      <span className="inline-flex text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                        {national}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </label>
-                              {selected && (ev.filters || []).length > 0 && (
+                              {selected && filters.length > 0 && (
                                 <div className="px-3 pb-3 pt-0 flex flex-col gap-3 border-t border-green-100 mx-3 mb-3 mt-0">
                                   <div className="text-xs font-medium text-slate-500 pt-3">
                                     Filtros (opcional)
                                   </div>
-                                  {ev.filters.map(filter => (
+                                  {filters.map(filter => (
                                     <FilterField
                                       key={filter.key}
                                       eventName={ev.name}
                                       filter={filter}
-                                      value={filterValues[ev.name]?.[filter.key] ?? ''}
-                                      onChange={value => setFilter(ev.name, filter.key, value)}
+                                      eventFilters={filterValues[ev.name]}
+                                      value={filterValues[ev.name]?.[filter.key] ?? (filter.multiple ? [] : '')}
+                                      refs={refs}
+                                      getJson={getJson}
+                                      onChange={next => setFilter(ev.name, filter.key, next)}
                                     />
                                   ))}
                                 </div>
